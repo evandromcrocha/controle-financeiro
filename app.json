@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Controle Financeiro",
+    "slug": "controle-financeiro",
+    "version": "1.0.0",
+    "scheme": "controlefinanceiro",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0f172a",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.evandro.controlefinanceiro"
+    },
+    "android": {
+      "package": "com.evandro.controlefinanceiro"
+    },
+    "web": { "bundler": "metro" },
+    "plugins": ["expo-router"],
+    "extra": {
+      "supabaseUrl": "https://fjlphewbocclfwzwlymy.supabase.co",
+      "supabaseAnonKey": "sb_publishable_Sbs85eyq_D4oKbJ4-LDE6g_aWV-KE3S"
+    }
+  }
+}
