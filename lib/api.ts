@@ -4,7 +4,7 @@ import type { Lancamento, FormaPagamento, Categoria } from './types';
 import seed from './seed.json';
 
 export async function listLancamentos(competencia?: string): Promise<Lancamento[]> {
-  let q = supabase.from('fin_lancamentos').select('*');
+  let q = supabase.from('lancamentos').select('*');
   if (competencia) q = q.eq('competencia', competencia);
   const { data, error } = await q
     .order('competencia_ref', { ascending: false })
@@ -15,7 +15,7 @@ export async function listLancamentos(competencia?: string): Promise<Lancamento[
 
 export async function listAllLancamentos(): Promise<Lancamento[]> {
   const { data, error } = await supabase
-    .from('fin_lancamentos')
+    .from('lancamentos')
     .select('*')
     .order('competencia_ref', { ascending: false });
   if (error) throw error;
@@ -24,7 +24,7 @@ export async function listAllLancamentos(): Promise<Lancamento[]> {
 
 export async function listCompetencias(): Promise<string[]> {
   const { data, error } = await supabase
-    .from('fin_lancamentos')
+    .from('lancamentos')
     .select('competencia, competencia_ref')
     .not('competencia', 'is', null)
     .order('competencia_ref', { ascending: false });
@@ -46,23 +46,23 @@ export async function upsertLancamento(l: Partial<Lancamento>): Promise<void> {
   payload.valor = v;
   payload.valor_final = payload.tipo === 'CRÉDITO' ? v : -v;
   if (payload.id) {
-    const { error } = await supabase.from('fin_lancamentos').update(payload).eq('id', payload.id);
+    const { error } = await supabase.from('lancamentos').update(payload).eq('id', payload.id);
     if (error) throw error;
   } else {
     delete payload.id;
-    const { error } = await supabase.from('fin_lancamentos').insert(payload);
+    const { error } = await supabase.from('lancamentos').insert(payload);
     if (error) throw error;
   }
 }
 
 export async function deleteLancamento(id: string): Promise<void> {
-  const { error } = await supabase.from('fin_lancamentos').delete().eq('id', id);
+  const { error } = await supabase.from('lancamentos').delete().eq('id', id);
   if (error) throw error;
 }
 
 export async function listFormas(): Promise<FormaPagamento[]> {
   const { data, error } = await supabase
-    .from('fin_formas_pagamento')
+    .from('formas_pagamento')
     .select('*')
     .order('nome');
   if (error) throw error;
@@ -71,28 +71,28 @@ export async function listFormas(): Promise<FormaPagamento[]> {
 
 export async function upsertForma(f: Partial<FormaPagamento>): Promise<void> {
   if (f.id) {
-    const { error } = await supabase.from('fin_formas_pagamento').update(f).eq('id', f.id);
+    const { error } = await supabase.from('formas_pagamento').update(f).eq('id', f.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('fin_formas_pagamento').insert(f);
+    const { error } = await supabase.from('formas_pagamento').insert(f);
     if (error) throw error;
   }
 }
 
 export async function deleteForma(id: string): Promise<void> {
-  const { error } = await supabase.from('fin_formas_pagamento').delete().eq('id', id);
+  const { error } = await supabase.from('formas_pagamento').delete().eq('id', id);
   if (error) throw error;
 }
 
 export async function listCategorias(): Promise<Categoria[]> {
-  const { data, error } = await supabase.from('fin_categorias').select('*').order('nome');
+  const { data, error } = await supabase.from('categorias').select('*').order('nome');
   if (error) throw error;
   return (data ?? []) as Categoria[];
 }
 
 export async function upsertCategoria(nome: string): Promise<void> {
   const { error } = await supabase
-    .from('fin_categorias')
+    .from('categorias')
     .upsert({ nome: nome.trim().toUpperCase() }, { onConflict: 'user_id,nome' });
   if (error) throw error;
 }
@@ -100,7 +100,7 @@ export async function upsertCategoria(nome: string): Promise<void> {
 // ---- Importação inicial (seed a partir da planilha) ----
 export async function countLancamentos(): Promise<number> {
   const { count, error } = await supabase
-    .from('fin_lancamentos')
+    .from('lancamentos')
     .select('*', { count: 'exact', head: true });
   if (error) throw error;
   return count ?? 0;
@@ -120,11 +120,11 @@ export async function importarSeed(
     tipo: f.tipo,
     dia_vencimento: f.dia_vencimento,
   }));
-  await supabase.from('fin_formas_pagamento').upsert(formas, { onConflict: 'user_id,nome' });
+  await supabase.from('formas_pagamento').upsert(formas, { onConflict: 'user_id,nome' });
 
   // categorias
   const cats = (seed.categorias as string[]).map((c) => ({ user_id, nome: c }));
-  await supabase.from('fin_categorias').upsert(cats, { onConflict: 'user_id,nome' });
+  await supabase.from('categorias').upsert(cats, { onConflict: 'user_id,nome' });
 
   // lançamentos em lotes
   const rows = (seed.lancamentos as any[]).map((l) => ({
@@ -147,7 +147,7 @@ export async function importarSeed(
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const batch = rows.slice(i, i + CHUNK);
-    const { error } = await supabase.from('fin_lancamentos').insert(batch);
+    const { error } = await supabase.from('lancamentos').insert(batch);
     if (error) throw error;
     onProgress?.(Math.min(i + CHUNK, rows.length), rows.length);
   }

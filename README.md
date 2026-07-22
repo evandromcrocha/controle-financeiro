@@ -36,11 +36,13 @@ Para builds nas lojas, use [EAS Build](https://docs.expo.dev/build/introduction/
 As credenciais públicas já estão em `app.json` (`extra.supabaseUrl` / `supabaseAnonKey`).
 O schema fica em `supabase/migrations/`.
 
-Tabelas (prefixo `fin_`, todas com RLS por usuário):
+Tudo vive num schema dedicado **`financeiro`** (fora do `public`), exposto na API
+do PostgREST. O cliente Supabase já aponta para ele via `db: { schema: 'financeiro' }`.
+Tabelas (todas com RLS por usuário):
 
-- `fin_lancamentos` — lançamentos (descrição, valor, tipo, categoria, forma de pagamento, competência, parcelas…).
-- `fin_formas_pagamento` — cartões / contas / dinheiro, com dia de vencimento.
-- `fin_categorias` — categorias.
+- `financeiro.lancamentos` — lançamentos (descrição, valor, tipo, categoria, forma de pagamento, competência, parcelas…).
+- `financeiro.formas_pagamento` — cartões / contas / dinheiro, com dia de vencimento.
+- `financeiro.categorias` — categorias.
 
 > Autenticação por e-mail: se a confirmação de e-mail estiver ativada no seu projeto
 > Supabase, confirme o link enviado antes do primeiro login. Para testes, é possível
