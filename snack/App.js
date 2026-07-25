@@ -31,6 +31,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 const compLabel = (c) => { if (!c || !c.includes('/')) return c || '—'; const [m, y] = c.split('/'); return `${MESES[+m - 1] || m} ${y}`; };
 const compRef = (c) => { if (!c || !c.includes('/')) return null; const [m, y] = c.split('/'); return `${y}-${m.padStart(2, '0')}-01`; };
 const nowComp = () => { const d = new Date(); return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
+const isoToBr = (s) => { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
+const brToIso = (s) => { const [d, m, y] = s.split('/'); return `${y}-${m}-${d}`; };
 const shiftComp = (c, delta) => {
   const [m, y] = c.split('/').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
@@ -130,6 +132,7 @@ function Wizard({ initial, cats, formas, onSave, onDel, onClose }) {
   const [forma, setForma] = useState(initial.forma_pagamento || null);
   const [comp, setComp] = useState(initial.competencia && /^\d{2}\/\d{4}$/.test(initial.competencia) ? initial.competencia : nowComp());
   const [parcelas, setParcelas] = useState(initial.parcelas_total || 1);
+  const [venc, setVenc] = useState(initial.data_pagamento ? isoToBr(initial.data_pagamento) : '');
   const [catQ, setCatQ] = useState('');
 
   const valorNum = (parseInt(cents || '0', 10)) / 100;
@@ -145,9 +148,11 @@ function Wizard({ initial, cats, formas, onSave, onDel, onClose }) {
   const salvar = () => {
     if (valorNum <= 0) { setStep(1); return Alert.alert('Atenção', 'Informe o valor.'); }
     if (!descricao.trim()) { setStep(2); return Alert.alert('Atenção', 'Informe a descrição.'); }
+    if (venc && !/^\d{2}\/\d{2}\/\d{4}$/.test(venc.trim())) { setStep(5); return Alert.alert('Atenção', 'Vencimento deve ser DD/MM/AAAA (ou deixe vazio).'); }
     onSave({
       id: initial.id, tipo, valor: valorNum, descricao: descricao.trim(),
       categoria, forma_pagamento: forma, competencia: comp, parcelas_total: parcelas,
+      data_pagamento: venc ? brToIso(venc.trim()) : null,
     });
   };
 
@@ -278,12 +283,27 @@ function Wizard({ initial, cats, formas, onSave, onDel, onClose }) {
                 <Text style={{ color: C.text, fontSize: 20, fontWeight: '700', flex: 1, textAlign: 'center' }}>{compLabel(comp)}</Text>
                 <TouchableOpacity onPress={() => setComp((c) => shiftComp(c, 1))} style={s.monthArrow}><Ionicons name="chevron-forward" size={22} color={C.text} /></TouchableOpacity>
               </View>
-              <Text style={[s.subLabel, { marginTop: 24 }]}>Parcelas</Text>
+              <Text style={[s.subLabel, { marginTop: 22 }]}>Parcelas</Text>
               <View style={s.monthRow}>
                 <TouchableOpacity onPress={() => setParcelas((p) => Math.max(1, p - 1))} style={s.monthArrow}><Ionicons name="remove" size={22} color={C.text} /></TouchableOpacity>
                 <Text style={{ color: C.text, fontSize: 20, fontWeight: '700', flex: 1, textAlign: 'center' }}>{parcelas}x</Text>
                 <TouchableOpacity onPress={() => setParcelas((p) => p + 1)} style={s.monthArrow}><Ionicons name="add" size={22} color={C.text} /></TouchableOpacity>
               </View>
+              <Text style={[s.subLabel, { marginTop: 22 }]}>Data de vencimento (opcional)</Text>
+              <TextInput style={s.input} placeholder="DD/MM/AAAA" placeholderTextColor={C.dim} keyboardType="numbers-and-punctuation" value={venc} onChangeText={setVenc} />
+              {(() => {
+                const cardObj = formas.find((f) => f.nome === forma);
+                if (cardObj?.dia_vencimento && !venc) {
+                  const [mm, yy] = comp.split('/');
+                  const sug = `${String(cardObj.dia_vencimento).padStart(2, '0')}/${mm}/${yy}`;
+                  return (
+                    <TouchableOpacity onPress={() => setVenc(sug)} style={{ marginTop: 8 }}>
+                      <Text style={{ color: C.primary2, fontSize: 13 }}>Usar vencimento do cartão: {sug}</Text>
+                    </TouchableOpacity>
+                  );
+                }
+                return null;
+              })()}
               <View style={{ flex: 1 }} />
               <TouchableOpacity style={[s.btn, { backgroundColor: accent }]} onPress={next} activeOpacity={0.85}><Text style={s.btnT}>Continuar</Text></TouchableOpacity>
             </View>
@@ -303,6 +323,7 @@ function Wizard({ initial, cats, formas, onSave, onDel, onClose }) {
               <RevRow icon="pricetag" label="Categoria" value={categoria || '—'} onPress={() => setStep(3)} />
               <RevRow icon="wallet" label="Pagamento" value={forma || '—'} onPress={() => setStep(4)} />
               <RevRow icon="calendar" label="Competência" value={compLabel(comp)} onPress={() => setStep(5)} />
+              <RevRow icon="alarm" label="Vencimento" value={venc || '—'} onPress={() => setStep(5)} />
               <RevRow icon="albums" label="Parcelas" value={`${parcelas}x`} onPress={() => setStep(5)} />
               <View style={{ flex: 1 }} />
               <TouchableOpacity style={[s.btn, { backgroundColor: accent }]} onPress={salvar} activeOpacity={0.85}>
@@ -363,6 +384,7 @@ function Main() {
       descricao: f.descricao, valor: v, tipo: f.tipo, valor_final: f.tipo === 'CRÉDITO' ? v : -v,
       categoria: f.categoria || null, forma_pagamento: f.forma_pagamento || null,
       parcelas_total: f.parcelas_total || 1, competencia: f.competencia, competencia_ref: compRef(f.competencia),
+      data_pagamento: f.data_pagamento || null,
     };
     try {
       if (f.id) await supabase.from('lancamentos').update(payload).eq('id', f.id);
