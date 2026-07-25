@@ -14,12 +14,22 @@ export async function listLancamentos(competencia?: string): Promise<Lancamento[
 }
 
 export async function listAllLancamentos(): Promise<Lancamento[]> {
-  const { data, error } = await supabase
-    .from('lancamentos')
-    .select('*')
-    .order('competencia_ref', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as Lancamento[];
+  // busca em páginas de 1000 (limite padrão do Supabase por consulta)
+  const PAGE = 1000;
+  let from = 0;
+  const all: Lancamento[] = [];
+  for (;;) {
+    const { data, error } = await supabase
+      .from('lancamentos')
+      .select('*')
+      .order('competencia_ref', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    all.push(...((data ?? []) as Lancamento[]));
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
 }
 
 export async function listCompetencias(): Promise<string[]> {

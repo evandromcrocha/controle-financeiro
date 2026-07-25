@@ -20,6 +20,23 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   db: { schema: 'financeiro' },
 });
 
+// busca TODOS os lançamentos em páginas de 1000 (o Supabase limita 1000 por consulta)
+async function fetchAllLancamentos() {
+  const PAGE = 1000;
+  let from = 0, all = [];
+  for (;;) {
+    const { data, error } = await supabase
+      .from('lancamentos').select('*')
+      .order('competencia_ref', { ascending: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    all = all.concat(data || []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 const C = {
   bg: '#0b1020', card: '#161d33', cardAlt: '#232c47', border: '#2a3350',
   text: '#f1f5f9', dim: '#8b96b3', primary: '#6d5efc', primary2: '#8b7dff',
@@ -364,8 +381,8 @@ function Main() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: ls }, { data: cs }, { data: fs }] = await Promise.all([
-        supabase.from('lancamentos').select('*').order('competencia_ref', { ascending: false }),
+      const [ls, { data: cs }, { data: fs }] = await Promise.all([
+        fetchAllLancamentos(),
         supabase.from('categorias').select('id,nome').order('nome'),
         supabase.from('formas_pagamento').select('id,nome,tipo,dia_vencimento').order('nome'),
       ]);
