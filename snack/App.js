@@ -21,7 +21,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 const C = {
   bg: '#0b1020', card: '#161d33', cardAlt: '#232c47', border: '#2a3350',
   text: '#f1f5f9', dim: '#8b96b3', primary: '#6d5efc', primary2: '#8b7dff',
-  green: '#2ecc71', greenBg: '#12351f', red: '#ff5a6a', redBg: '#3a1620', white: '#fff',
+  green: '#2ecc71', greenBg: '#12351f', red: '#ff5a6a', redBg: '#3a1620',
+  amber: '#f5a524', white: '#fff',
 };
 const PAL = ['#6d5efc','#2ecc71','#ff5a6a','#f5a524','#22b8cf','#e64980','#9775fa','#12b886','#ff922b','#82c91e','#4dabf7','#cc5de8'];
 const colorFor = (k = '') => { let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return PAL[h % PAL.length]; };
@@ -440,6 +441,15 @@ function Resumo({ doMes, comp }) {
         </View>
       </View>
 
+      {doMes.filter((r) => !r.categoria).length > 0 && (
+        <View style={s.pendBanner}>
+          <Ionicons name="alert-circle" size={20} color={C.amber} />
+          <Text style={{ color: C.text, flex: 1, marginLeft: 8, fontSize: 13 }}>
+            {doMes.filter((r) => !r.categoria).length} lançamento(s) para categorizar. Veja em <Text style={{ fontWeight: '700' }}>Lançar › Pendentes</Text>.
+          </Text>
+        </View>
+      )}
+
       {porForma.length > 0 && <>
         <Text style={s.sec}>Gastos por cartão / conta</Text>
         <View style={s.box}>
@@ -473,29 +483,51 @@ function Resumo({ doMes, comp }) {
   );
 }
 
+const isPend = (r) => !r.categoria;
+
 function Lancamentos({ doMes, onEdit }) {
   const [q, setQ] = useState('');
+  const [filtro, setFiltro] = useState('todos'); // todos | pendentes
+  const pendCount = useMemo(() => doMes.filter(isPend).length, [doMes]);
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return doMes;
-    return doMes.filter((r) => (r.descricao || '').toLowerCase().includes(t) || (r.categoria || '').toLowerCase().includes(t) || (r.forma_pagamento || '').toLowerCase().includes(t));
-  }, [doMes, q]);
+    let base = filtro === 'pendentes' ? doMes.filter(isPend) : doMes;
+    if (!t) return base;
+    return base.filter((r) => (r.descricao || '').toLowerCase().includes(t) || (r.categoria || '').toLowerCase().includes(t) || (r.forma_pagamento || '').toLowerCase().includes(t));
+  }, [doMes, q, filtro]);
   return (
     <View style={{ flex: 1 }}>
       <View style={s.search}><Ionicons name="search" size={17} color={C.dim} /><TextInput style={{ flex: 1, color: C.text, paddingVertical: 9, marginLeft: 8 }} placeholder="Buscar..." placeholderTextColor={C.dim} value={q} onChangeText={setQ} /></View>
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 10 }}>
+        {[['todos', 'Todos'], ['pendentes', `Pendentes${pendCount ? ` (${pendCount})` : ''}`]].map(([k, lb]) => (
+          <TouchableOpacity key={k} style={[s.seg, filtro === k && { backgroundColor: k === 'pendentes' ? C.amber : C.primary, borderColor: 'transparent' }]} onPress={() => setFiltro(k)}>
+            <Text style={{ color: filtro === k ? C.white : C.dim, fontWeight: '700', fontSize: 13 }}>{lb}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {filtro === 'pendentes' && pendCount > 0 && (
+        <Text style={{ color: C.amber, fontSize: 12, paddingHorizontal: 16, marginTop: 8 }}>Toque em cada item e escolha a categoria para concluir.</Text>
+      )}
       <FlatList
         data={filtered}
         keyExtractor={(i) => i.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
-        ListEmptyComponent={<Text style={{ color: C.dim, textAlign: 'center', marginTop: 40 }}>Nenhum lançamento nesta competência.</Text>}
+        ListEmptyComponent={<Text style={{ color: C.dim, textAlign: 'center', marginTop: 40 }}>{filtro === 'pendentes' ? 'Nada pendente por aqui. 🎉' : 'Nenhum lançamento nesta competência.'}</Text>}
         renderItem={({ item }) => {
           const cred = item.tipo === 'CRÉDITO';
+          const pend = isPend(item);
           return (
-            <TouchableOpacity style={s.row} onPress={() => onEdit(item)} activeOpacity={0.7}>
-              <View style={[s.icon, { backgroundColor: colorFor(item.categoria) + '2e' }]}><Ionicons name={catIcon(item.categoria)} size={17} color={colorFor(item.categoria)} /></View>
+            <TouchableOpacity style={[s.row, pend && { borderColor: C.amber, borderWidth: 1.5 }]} onPress={() => onEdit(item)} activeOpacity={0.7}>
+              <View style={[s.icon, { backgroundColor: (pend ? C.amber : colorFor(item.categoria)) + '2e' }]}>
+                <Ionicons name={pend ? 'help' : catIcon(item.categoria)} size={17} color={pend ? C.amber : colorFor(item.categoria)} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: C.text, fontWeight: '600' }} numberOfLines={1}>{item.descricao}</Text>
-                <Text style={{ color: C.dim, fontSize: 12 }} numberOfLines={1}>{(item.categoria || '—') + ' · ' + (item.forma_pagamento || '—') + (item.parcelas_total > 1 ? ` · ${item.parcelas_total}x` : '')}</Text>
+                {pend ? (
+                  <Text style={{ color: C.amber, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>⚠ Pendente · toque para categorizar</Text>
+                ) : (
+                  <Text style={{ color: C.dim, fontSize: 12 }} numberOfLines={1}>{(item.categoria || '—') + ' · ' + (item.forma_pagamento || '—') + (item.parcelas_total > 1 ? ` · ${item.parcelas_total}x` : '')}</Text>
+                )}
               </View>
               <Text style={{ color: cred ? C.green : C.red, fontWeight: '700' }}>{(cred ? '+' : '-') + brl(Math.abs(item.valor)).replace('R$', '').trim()}</Text>
             </TouchableOpacity>
@@ -710,6 +742,8 @@ const s = StyleSheet.create({
   sheetT: { color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 8 },
   opt: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: C.border },
   tipo: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  seg: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  pendBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#3a2e12', borderRadius: 14, padding: 12, marginTop: 14, borderWidth: 1, borderColor: C.amber },
   // wizard
   qTitle: { color: C.text, fontSize: 24, fontWeight: '800', marginBottom: 18 },
   bigChoice: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.card, borderRadius: 18, padding: 16, borderWidth: 1.5, borderColor: C.border },
