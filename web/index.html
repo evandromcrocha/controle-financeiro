@@ -259,6 +259,14 @@ function renderAjustes(v){
     el('span',{class:'ic'},'📄'),
     el('span',{},el('div',{style:'font-weight:700;font-size:16px'},'Importar fatura (PDF)'),el('div',{style:'font-size:13px;opacity:.9'},'A IA lê o PDF e adiciona o que falta como Pendente')));
   v.append(imp);
+  const auto=el('button',{class:'btn ghost',style:'width:100%;margin-top:10px',onclick:async()=>{
+    auto.disabled=true;auto.textContent='Classificando...';
+    const{data,error}=await supabase.rpc('autocategorizar');
+    auto.disabled=false;auto.textContent='🪄 Auto-categorizar pelo histórico';
+    if(error)return toast(error.message);
+    toast(`${data||0} lançamento(s) categorizado(s) pelo histórico.`);await loadAll();
+  }},'🪄 Auto-categorizar pelo histórico');
+  v.append(auto);
   // cartões
   const h=el('div',{style:'display:flex;justify-content:space-between;align-items:center'},el('h2',{},'Cartões e contas'),el('button',{class:'btn sm',onclick:()=>openCard()},'+ Novo'));
   v.append(h);

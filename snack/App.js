@@ -689,6 +689,24 @@ function ImportarFatura({ formas, reload }) {
   );
 }
 
+function AutoCategorizar({ reload }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.rpc('autocategorizar');
+      if (error) throw error;
+      Alert.alert('Pronto', `${data || 0} lançamento(s) categorizado(s) automaticamente pelo histórico.`);
+      reload();
+    } catch (e) { Alert.alert('Erro', e.message); } finally { setBusy(false); }
+  };
+  return (
+    <TouchableOpacity style={[s.bigChoice, { marginBottom: 12, justifyContent: 'center' }]} onPress={run} disabled={busy} activeOpacity={0.85}>
+      {busy ? <ActivityIndicator color={C.primary2} /> : <><Ionicons name="sparkles" size={18} color={C.primary2} /><Text style={{ color: C.text, fontWeight: '700' }}>Auto-categorizar pelo histórico</Text></>}
+    </TouchableOpacity>
+  );
+}
+
 function Ajustes({ formas, cats, rows, reload }) {
   const [cardEdit, setCardEdit] = useState(null);
   const [newCat, setNewCat] = useState('');
@@ -722,6 +740,7 @@ function Ajustes({ formas, cats, rows, reload }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
       <ImportarFatura formas={formas} reload={reload} />
+      <AutoCategorizar reload={reload} />
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={[s.sec, { marginTop: 4 }]}>Cartões e contas</Text>

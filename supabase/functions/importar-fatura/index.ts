@@ -113,14 +113,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    let autoCategorizados = 0;
     if (novos.length) {
       const { error } = await supabase.from("lancamentos").insert(novos);
       if (error) return json({ ok: false, erro: "Erro ao salvar: " + error.message }, 500);
+      // classifica automaticamente pelo histórico (descrições já conhecidas)
+      const { data: nAuto } = await supabase.rpc("autocategorizar");
+      autoCategorizados = Number(nAuto) || 0;
     }
 
     return json({
       ok: true, competencia: comp,
       total_extraido: compras.length, inseridos: novos.length, ignorados,
+      auto_categorizados: autoCategorizados,
+      pendentes: Math.max(0, novos.length - autoCategorizados),
       itens: novos.map((n) => ({ descricao: n.descricao, valor: n.valor })),
     });
   } catch (e) {
