@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Controle Financeiro — Desktop</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:#161d33; --card2:#1e2740; --alt:#232c47; --border:#2a3350;
+    --text:#f1f5f9; --dim:#8b96b3; --primary:#6d5efc; --primary2:#8b7dff;
+    --green:#2ecc71; --red:#ff5a6a; --amber:#f5a524;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--primary2)}
+  button{font-family:inherit;cursor:pointer}
+  .hidden{display:none!important}
+  input,select{font-family:inherit;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;width:100%}
+  input:focus,select:focus{outline:none;border-color:var(--primary)}
+  .btn{background:var(--primary);border:none;border-radius:10px;color:#fff;padding:11px 18px;font-weight:700;font-size:14px}
+  .btn.ghost{background:var(--card);border:1px solid var(--border);color:var(--dim)}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .btn.red{background:var(--red)} .btn.green{background:var(--green)}
+  .muted{color:var(--dim)}
+  /* login */
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .loginbox{width:100%;max-width:380px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:30px}
+  .logo{width:64px;height:64px;border-radius:18px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px}
+  label{display:block;font-size:13px;color:var(--dim);margin:12px 0 5px}
+  /* app shell */
+  #app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+  .side{background:#0e1526;border-right:1px solid var(--border);padding:20px 14px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;margin-bottom:24px;padding:0 6px}
+  .brand .dot{width:30px;height:30px;border-radius:9px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:11px;color:var(--dim);text-decoration:none;font-weight:600;font-size:14px;margin-bottom:3px}
+  .nav a.active{background:var(--card);color:var(--text)}
+  .nav a:hover{background:var(--card)}
+  .main{padding:24px 30px;max-width:1200px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap}
+  h1{font-size:24px;margin:0}
+  h2{font-size:16px;margin:26px 0 12px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
+  .kpi{flex:1;min-width:190px}
+  .kpi .v{font-size:26px;font-weight:800;margin-top:6px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}#app{grid-template-columns:1fr}.side{position:static;height:auto}}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:11px 10px;font-size:14px;border-bottom:1px solid var(--border)}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  tr:hover td{background:var(--card2)}
+  .tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .bar{height:9px;background:var(--alt);border-radius:5px;overflow:hidden}
+  .bar>span{display:block;height:100%;border-radius:5px}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 12px;font-weight:600;font-size:13px}
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden}
+  .seg button{background:none;border:none;color:var(--dim);padding:7px 16px;font-weight:700;font-size:13px}
+  .seg button.on{background:var(--primary);color:#fff}
+  .seg button.on.amber{background:var(--amber)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px;width:100%;max-width:460px;max-height:90vh;overflow:auto}
+  .import{background:linear-gradient(135deg,var(--primary),#4b3fd6);border:none;border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;color:#fff;width:100%;text-align:left}
+  .import .ic{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .spin{width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;z-index:80;max-width:360px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="loginbox">
+    <div class="logo">💰</div>
+    <div style="text-align:center;font-size:22px;font-weight:800">Controle Financeiro</div>
+    <div style="text-align:center" class="muted">Versão desktop</div>
+    <label>E-mail</label><input id="email" type="email" placeholder="voce@email.com" autocomplete="username" />
+    <label>Senha</label><input id="pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+    <button class="btn" style="width:100%;margin-top:18px" id="btnLogin">Entrar</button>
+    <div id="loginErr" class="muted" style="color:var(--red);margin-top:12px;text-align:center"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <aside class="side">
+    <div class="brand"><span class="dot">💰</span> Financeiro</div>
+    <nav class="nav" id="nav">
+      <a data-t="resumo" class="active">📊 Resumo</a>
+      <a data-t="lanc">🧾 Lançamentos</a>
+      <a data-t="rel">📈 Relatórios</a>
+      <a data-t="ajustes">⚙️ Ajustes</a>
+    </nav>
+    <div style="position:absolute;bottom:18px;left:14px;right:14px">
+      <button class="btn ghost" style="width:100%" id="btnLogout">Sair</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <h1 id="title">Resumo</h1>
+      <div style="display:flex;gap:12px;align-items:center">
+        <select id="compSel" style="width:auto"></select>
+      </div>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_URL='https://fjlphewbocclfwzwlymy.supabase.co';
+const SUPABASE_KEY='sb_publishable_Sbs85eyq_D4oKbJ4-LDE6g_aWV-KE3S';
+const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{db:{schema:'financeiro'}});
+
+const $=s=>document.querySelector(s);
+const el=(t,p={},...ch)=>{const e=document.createElement(t);Object.entries(p).forEach(([k,v])=>{if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else e.setAttribute(k,v)});ch.flat().forEach(c=>e.append(c?.nodeType?c:document.createTextNode(c??'')));return e;};
+const brl=v=>(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const compLabel=c=>{if(!c||!c.includes('/'))return c||'—';const[m,y]=c.split('/');return `${MESES[+m-1]||m} ${y}`;};
+const compRef=c=>{const[m,y]=c.split('/');return `${y}-${m.padStart(2,'0')}-01`;};
+const nowComp=()=>{const d=new Date();return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;};
+const PAL=['#6d5efc','#2ecc71','#ff5a6a','#f5a524','#22b8cf','#e64980','#9775fa','#12b886','#ff922b','#82c91e','#4dabf7','#cc5de8'];
+const colorFor=k=>{k=k||'';let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;return PAL[h%PAL.length];};
+function toast(msg){const t=el('div',{class:'toast'},msg);document.body.append(t);setTimeout(()=>t.remove(),4200);}
+
+let state={comp:nowComp(),rows:[],cats:[],formas:[],comps:[],tab:'resumo'};
+
+async function loadAll(){
+  const [a,b,c]=await Promise.all([
+    supabase.from('lancamentos').select('*').order('competencia_ref',{ascending:false}),
+    supabase.from('categorias').select('id,nome').order('nome'),
+    supabase.from('formas_pagamento').select('id,nome,tipo,dia_vencimento').order('nome'),
+  ]);
+  state.rows=a.data||[];state.cats=b.data||[];state.formas=c.data||[];
+  state.comps=[...new Set(state.rows.map(r=>r.competencia).filter(Boolean))];
+  if(!state.comps.includes(state.comp))state.comp=state.comps[0]||state.comp;
+  fillComp();render();
+}
+function fillComp(){
+  const sel=$('#compSel');sel.innerHTML='';
+  (state.comps.includes(state.comp)?state.comps:[state.comp,...state.comps]).forEach(c=>{
+    sel.append(el('option',{value:c,...(c===state.comp?{selected:'1'}:{})},compLabel(c)));
+  });
+  sel.onchange=()=>{state.comp=sel.value;render();};
+}
+const doMes=()=>state.rows.filter(r=>r.competencia===state.comp);
+const isPend=r=>!r.categoria;
+
+// ---------- navegação ----------
+$('#nav').addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;
+  state.tab=a.dataset.t;[...$('#nav').children].forEach(x=>x.classList.toggle('active',x===a));
+  $('#title').textContent={resumo:'Resumo',lanc:'Lançamentos',rel:'Relatórios',ajustes:'Ajustes'}[state.tab];
+  $('#compSel').style.display=(state.tab==='resumo'||state.tab==='lanc')?'':'none';
+  render();
+});
+
+function render(){
+  const v=$('#view');v.innerHTML='';
+  if(state.tab==='resumo')renderResumo(v);
+  else if(state.tab==='lanc')renderLanc(v);
+  else if(state.tab==='rel')renderRel(v);
+  else renderAjustes(v);
+}
+
+function agrupa(list,key,tipo='DÉBITO'){const m=new Map();list.forEach(r=>{if(r.tipo!==tipo)return;const k=r[key]||'Outros';m.set(k,(m.get(k)||0)+Math.abs(r.valor));});return [...m.entries()].sort((a,b)=>b[1]-a[1]);}
+
+function renderResumo(v){
+  const dm=doMes();let e=0,sa=0;dm.forEach(r=>r.tipo==='CRÉDITO'?e+=Math.abs(r.valor):sa+=Math.abs(r.valor));
+  const pend=dm.filter(isPend).length;
+  if(pend)v.append(el('div',{class:'card',style:`border-color:var(--amber);background:#3a2e12;margin-bottom:16px`},
+    `⚠ ${pend} lançamento(s) para categorizar — veja em Lançamentos › Pendentes.`));
+  const kpis=el('div',{class:'row'});
+  const mk=(t,val,col)=>el('div',{class:'card kpi'},el('div',{class:'muted'},t),el('div',{class:'v',style:`color:${col}`},brl(val)));
+  kpis.append(mk('Saldo do mês',e-sa,(e-sa)>=0?'var(--green)':'var(--red)'),mk('Entradas',e,'var(--green)'),mk('Saídas',sa,'var(--red)'));
+  v.append(kpis);
+  const g=el('div',{class:'grid2',style:'margin-top:16px'});
+  // por cartão
+  const pf=agrupa(dm,'forma_pagamento');
+  const c1=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Gastos por cartão / conta'));
+  pf.forEach(([n,val])=>c1.append(el('div',{style:'display:flex;align-items:center;gap:10px;padding:7px 0'},
+    el('span',{style:`width:11px;height:11px;border-radius:6px;background:${colorFor(n)}`}),
+    el('span',{style:'flex:1'},n),el('b',{},brl(val)))));
+  if(!pf.length)c1.append(el('div',{class:'muted'},'Sem gastos.'));
+  // por categoria
+  const pc=agrupa(dm,'categoria').slice(0,8);const mx=pc[0]?.[1]||1;
+  const c2=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Maiores categorias'));
+  pc.forEach(([n,val])=>{const w=el('div',{style:'margin-bottom:11px'});
+    w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:5px'},el('span',{},n),el('span',{class:'muted'},brl(val))));
+    w.append(el('div',{class:'bar'},el('span',{style:`width:${val/mx*100}%;background:${colorFor(n)}`})));c2.append(w);});
+  if(!pc.length)c2.append(el('div',{class:'muted'},'Sem gastos.'));
+  g.append(c1,c2);v.append(g);
+}
+
+function renderLanc(v){
+  let filtro='todos',q='';
+  const dm=()=>doMes();
+  const bar=el('div',{style:'display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap'});
+  const inp=el('input',{placeholder:'Buscar...',style:'max-width:260px',oninput:e=>{q=e.target.value;draw();}});
+  const seg=el('div',{class:'seg'});
+  const bt=(k,l)=>el('button',{class:filtro===k?('on'+(k==='pendentes'?' amber':'')):'',onclick:()=>{filtro=k;[...seg.children].forEach(c=>c.className=c===bseg[k]?('on'+(k==='pendentes'?' amber':'')):'');draw();}},l);
+  const bseg={};bseg.todos=bt('todos','Todos');bseg.pendentes=bt('pendentes','Pendentes');seg.append(bseg.todos,bseg.pendentes);
+  const add=el('button',{class:'btn',style:'margin-left:auto',onclick:()=>openLanc()},'+ Novo lançamento');
+  bar.append(inp,seg,add);v.append(bar);
+  const wrap=el('div',{class:'card'});v.append(wrap);
+  function draw(){
+    let list=dm();if(filtro==='pendentes')list=list.filter(isPend);
+    if(q.trim())list=list.filter(r=>(r.descricao+r.categoria+r.forma_pagamento).toLowerCase().includes(q.toLowerCase()));
+    const pc=dm().filter(isPend).length;bseg.pendentes.textContent='Pendentes'+(pc?` (${pc})`:'');
+    wrap.innerHTML='';
+    const t=el('table');t.append(el('thead',{},el('tr',{},...['Descrição','Categoria','Cartão/Conta','Venc.','Valor'].map(h=>el('th',{},h)))));
+    const tb=el('tbody');
+    if(!list.length)tb.append(el('tr',{},el('td',{colspan:5,class:'muted',style:'text-align:center;padding:30px'},filtro==='pendentes'?'Nada pendente 🎉':'Nenhum lançamento.')));
+    list.forEach(r=>{const cred=r.tipo==='CRÉDITO';const pend=isPend(r);
+      const tr=el('tr',{style:'cursor:pointer',onclick:()=>openLanc(r)});
+      tr.append(
+        el('td',{},el('b',{},r.descricao)),
+        el('td',{},pend?el('span',{class:'tag',style:'background:#3a2e12;color:var(--amber)'},'⚠ Pendente'):el('span',{class:'tag',style:`background:${colorFor(r.categoria)}22;color:${colorFor(r.categoria)}`},r.categoria)),
+        el('td',{},r.forma_pagamento||'—'),
+        el('td',{class:'muted'},r.data_pagamento?r.data_pagamento.split('-').reverse().join('/'):'—'),
+        el('td',{style:`font-weight:700;color:${cred?'var(--green)':'var(--red)'}`},(cred?'+':'-')+brl(Math.abs(r.valor)).replace('R$','').trim()),
+      );tb.append(tr);});
+    t.append(tb);wrap.append(t);
+  }
+  draw();
+}
+
+function renderRel(v){
+  const rows=state.rows;
+  const pc=agrupa(rows,'categoria');const tot=pc.reduce((s,[,x])=>s+x,0);
+  const mm=new Map();rows.forEach(r=>{const k=r.competencia_ref||'0';const cur=mm.get(k)||{comp:r.competencia,e:0,sa:0};r.tipo==='CRÉDITO'?cur.e+=Math.abs(r.valor):cur.sa+=Math.abs(r.valor);mm.set(k,cur);});
+  const meses=[...mm.entries()].sort((a,b)=>a[0]<b[0]?1:-1).slice(0,12).map(x=>x[1]);const mx=Math.max(1,...meses.map(m=>Math.max(m.e,m.sa)));
+  const g=el('div',{class:'grid2'});
+  const c1=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Evolução mensal'));
+  meses.forEach(m=>{const w=el('div',{style:'margin-bottom:13px'});
+    w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:5px'},el('b',{},compLabel(m.comp)),el('span',{style:`color:${m.e-m.sa>=0?'var(--green)':'var(--red)'};font-weight:700`},brl(m.e-m.sa))));
+    w.append(el('div',{class:'bar'},el('span',{style:`width:${m.e/mx*100}%;background:var(--green)`})));
+    w.append(el('div',{style:'height:3px'}));
+    w.append(el('div',{class:'bar'},el('span',{style:`width:${m.sa/mx*100}%;background:var(--red)`})));c1.append(w);});
+  const c2=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Gastos por categoria (todo período)'),el('div',{class:'muted',style:'margin-bottom:10px'},'Total: '+brl(tot)));
+  pc.forEach(([n,val])=>{const p=tot?val/tot*100:0;const w=el('div',{style:'margin-bottom:11px'});
+    w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:5px'},el('span',{},n),el('span',{class:'muted'},brl(val)+' · '+p.toFixed(1)+'%')));
+    w.append(el('div',{class:'bar'},el('span',{style:`width:${p}%;background:${colorFor(n)}`})));c2.append(w);});
+  g.append(c1,c2);v.append(g);
+}
+
+function renderAjustes(v){
+  // importar fatura
+  const imp=el('button',{class:'import',onclick:()=>importarFatura()},
+    el('span',{class:'ic'},'📄'),
+    el('span',{},el('div',{style:'font-weight:700;font-size:16px'},'Importar fatura (PDF)'),el('div',{style:'font-size:13px;opacity:.9'},'A IA lê o PDF e adiciona o que falta como Pendente')));
+  v.append(imp);
+  // cartões
+  const h=el('div',{style:'display:flex;justify-content:space-between;align-items:center'},el('h2',{},'Cartões e contas'),el('button',{class:'btn sm',onclick:()=>openCard()},'+ Novo'));
+  v.append(h);
+  const cardsBox=el('div',{class:'card'});
+  state.formas.forEach(f=>{cardsBox.append(el('div',{style:'display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer',onclick:()=>openCard(f)},
+    el('span',{style:`width:34px;height:34px;border-radius:9px;background:${colorFor(f.nome)};display:flex;align-items:center;justify-content:center`},f.tipo==='CARTAO'?'💳':f.tipo==='CONTA'?'🏦':'💵'),
+    el('span',{style:'flex:1'},el('b',{},f.nome),el('div',{class:'muted',style:'font-size:12px'},(f.tipo==='CARTAO'?'Cartão':f.tipo==='CONTA'?'Conta':'Dinheiro')+(f.dia_vencimento?` · vence dia ${f.dia_vencimento}`:''))),
+  ));});
+  v.append(cardsBox);
+  // categorias
+  v.append(el('h2',{},'Categorias'));
+  const catAdd=el('div',{style:'display:flex;gap:10px;margin-bottom:12px'});
+  const ci=el('input',{placeholder:'Nova categoria...',style:'max-width:300px'});
+  catAdd.append(ci,el('button',{class:'btn sm',onclick:async()=>{const n=ci.value.trim().toUpperCase();if(!n)return;const{error}=await supabase.from('categorias').insert({nome:n});if(error)toast(error.message);else{ci.value='';await loadAll();}}},'Adicionar'));
+  v.append(catAdd);
+  const catBox=el('div',{class:'card'});
+  state.cats.forEach(c=>catBox.append(el('div',{style:'display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)'},
+    el('span',{style:`width:20px;height:20px;border-radius:6px;background:${colorFor(c.nome)}`}),el('span',{style:'flex:1'},c.nome),
+    el('button',{class:'btn ghost sm',onclick:async()=>{if(confirm('Remover '+c.nome+'?')){await supabase.from('categorias').delete().eq('id',c.id);await loadAll();}}},'Excluir'))));
+  v.append(catBox);
+}
+
+// ---------- modais ----------
+function modal(node){const bg=el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});const m=el('div',{class:'modal'});m.append(node(()=>bg.remove()));bg.append(m);document.body.append(bg);return bg;}
+
+function openLanc(r={}){
+  modal(close=>{
+    const box=el('div');
+    box.append(el('h2',{style:'margin-top:0'},r.id?'Editar lançamento':'Novo lançamento'));
+    const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,data_pagamento:r.data_pagamento||''};
+    const seg=el('div',{class:'seg',style:'margin-bottom:6px'});
+    const sb=(k,l,c)=>el('button',{class:f.tipo===k?'on':'',style:f.tipo===k?`background:${c}`:'',onclick:()=>{f.tipo=k;[...seg.children].forEach((x,i)=>{x.className=(['DÉBITO','CRÉDITO'][i]===f.tipo)?'on':'';x.style.background=(['DÉBITO','CRÉDITO'][i]===f.tipo)?(['var(--red)','var(--green)'][i]):'';});}},l);
+    seg.append(sb('DÉBITO','Saída','var(--red)'),sb('CRÉDITO','Entrada','var(--green)'));box.append(seg);
+    const mkf=(lab,node)=>{box.append(el('label',{},lab),node);return node;};
+    const desc=mkf('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value}));
+    const val=mkf('Valor (R$)',el('input',{type:'number',step:'0.01',value:f.valor,oninput:e=>f.valor=e.target.value}));
+    const cat=mkf('Categoria',el('select',{onchange:e=>f.categoria=e.target.value}));
+    cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
+    const fp=mkf('Forma de pagamento',el('select',{onchange:e=>f.forma_pagamento=e.target.value}));
+    fp.append(el('option',{value:''},'—'));state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
+    const rowg=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
+    const comp=el('input',{value:f.competencia,placeholder:'MM/AAAA',oninput:e=>f.competencia=e.target.value});
+    const venc=el('input',{value:f.data_pagamento,placeholder:'AAAA-MM-DD',oninput:e=>f.data_pagamento=e.target.value});
+    rowg.append(el('div',{},el('label',{},'Competência'),comp),el('div',{},el('label',{},'Vencimento'),venc));box.append(rowg);
+    const acts=el('div',{style:'display:flex;gap:10px;margin-top:20px'});
+    acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{
+      const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
+      if(!f.descricao.trim())return toast('Informe a descrição.');
+      if(!v)return toast('Informe o valor.');
+      if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
+      const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null};
+      const q=r.id?supabase.from('lancamentos').update(payload).eq('id',r.id):supabase.from('lancamentos').insert(payload);
+      const{error}=await q;if(error)return toast(error.message);close();await loadAll();
+    }},'Salvar'));
+    if(r.id)acts.append(el('button',{class:'btn red',onclick:async()=>{if(confirm('Excluir?')){await supabase.from('lancamentos').delete().eq('id',r.id);close();await loadAll();}}},'Excluir'));
+    box.append(acts);
+    return box;
+  });
+}
+
+function openCard(r={}){
+  modal(close=>{
+    const box=el('div');box.append(el('h2',{style:'margin-top:0'},r.id?'Editar cartão/conta':'Novo cartão/conta'));
+    const f={nome:r.nome||'',tipo:r.tipo||'CARTAO',dia_vencimento:r.dia_vencimento||''};
+    box.append(el('label',{},'Nome'));const nome=el('input',{value:f.nome,oninput:e=>f.nome=e.target.value});box.append(nome);
+    box.append(el('label',{},'Tipo'));const tsel=el('select',{onchange:e=>f.tipo=e.target.value});['CARTAO','CONTA','DINHEIRO'].forEach(t=>tsel.append(el('option',{value:t,...(t===f.tipo?{selected:1}:{})},t==='CARTAO'?'Cartão':t==='CONTA'?'Conta':'Dinheiro')));box.append(tsel);
+    box.append(el('label',{},'Dia de vencimento (cartão)'));const dv=el('input',{type:'number',value:f.dia_vencimento,oninput:e=>f.dia_vencimento=e.target.value});box.append(dv);
+    const acts=el('div',{style:'display:flex;gap:10px;margin-top:20px'});
+    acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{if(!f.nome.trim())return toast('Informe o nome.');
+      const payload={nome:f.nome.trim(),tipo:f.tipo,dia_vencimento:f.dia_vencimento?+f.dia_vencimento:null};
+      const q=r.id?supabase.from('formas_pagamento').update(payload).eq('id',r.id):supabase.from('formas_pagamento').insert(payload);
+      const{error}=await q;if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
+    if(r.id)acts.append(el('button',{class:'btn red',onclick:async()=>{if(confirm('Remover?')){await supabase.from('formas_pagamento').delete().eq('id',r.id);close();await loadAll();}}},'Excluir'));
+    box.append(acts);return box;
+  });
+}
+
+// ---------- importar fatura ----------
+function importarFatura(){
+  const cartoes=state.formas.filter(f=>f.tipo==='CARTAO');
+  if(!cartoes.length)return toast('Cadastre um cartão primeiro.');
+  modal(close=>{
+    const box=el('div');box.append(el('h2',{style:'margin-top:0'},'Importar fatura (PDF)'));
+    box.append(el('div',{class:'muted',style:'margin-bottom:14px'},'Escolha o cartão e o arquivo PDF da fatura.'));
+    box.append(el('label',{},'Cartão'));const sel=el('select');cartoes.forEach(f=>sel.append(el('option',{value:f.nome},f.nome)));box.append(sel);
+    box.append(el('label',{},'Arquivo PDF'));const file=el('input',{type:'file',accept:'application/pdf'});box.append(file);
+    const status=el('div',{class:'muted',style:'margin-top:12px'});
+    const btn=el('button',{class:'btn',style:'width:100%;margin-top:16px',onclick:async()=>{
+      if(!file.files[0])return toast('Selecione o PDF.');
+      btn.disabled=true;btn.innerHTML='<span class="spin"></span> Lendo a fatura...';status.textContent='Extraindo e interpretando com IA (pode levar alguns segundos)...';
+      try{
+        const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result.split(',')[1]);fr.onerror=rej;fr.readAsDataURL(file.files[0]);});
+        const{data,error}=await supabase.functions.invoke('importar-fatura',{body:{pdfBase64:b64,cartao:sel.value}});
+        if(error)throw error;if(!data?.ok)throw new Error(data?.erro||'Falha.');
+        close();toast(`✅ Fatura de ${data.competencia}: ${data.inseridos} novo(s) como Pendentes, ${data.ignorados} já existiam.`);
+        await loadAll();
+      }catch(e){status.style.color='var(--red)';status.textContent=e.message||String(e);btn.disabled=false;btn.textContent='Tentar novamente';}
+    }},'Importar');
+    box.append(btn,status);return box;
+  });
+}
+
+// ---------- auth ----------
+$('#btnLogin').onclick=async()=>{
+  $('#loginErr').textContent='';
+  const{error}=await supabase.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#pass').value});
+  if(error)$('#loginErr').textContent=error.message;
+};
+$('#pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#btnLogin').click();});
+$('#btnLogout').onclick=()=>supabase.auth.signOut();
+
+supabase.auth.onAuthStateChange((_e,session)=>{
+  if(session){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');loadAll();}
+  else{$('#app').classList.add('hidden');$('#login').classList.remove('hidden');}
+});
+supabase.auth.getSession().then(({data})=>{
+  if(data.session){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');loadAll();}
+});
+</script>
+</body>
+</html>
