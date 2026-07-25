@@ -10,6 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { createClient } from '@supabase/supabase-js';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 const SUPABASE_URL = 'https://fjlphewbocclfwzwlymy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Sbs85eyq_D4oKbJ4-LDE6g_aWV-KE3S';
@@ -619,6 +621,57 @@ function Relatorios({ rows }) {
   );
 }
 
+function ImportarFatura({ formas, reload }) {
+  const [pick, setPick] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const cartoes = formas.filter((f) => f.tipo === 'CARTAO');
+
+  const run = async (cartao) => {
+    setPick(false);
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.length) return;
+      setBusy(true);
+      const b64 = await FileSystem.readAsStringAsync(res.assets[0].uri, { encoding: FileSystem.EncodingType.Base64 });
+      const { data, error } = await supabase.functions.invoke('importar-fatura', { body: { pdfBase64: b64, cartao } });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.erro || 'Falha ao importar.');
+      Alert.alert('Fatura importada ✅',
+        `Cartão: ${cartao}\nCompetência: ${data.competencia}\n\n${data.inseridos} lançamento(s) novo(s) adicionados como Pendentes.\n${data.ignorados} já existiam (ignorados).`);
+      reload();
+    } catch (e) {
+      Alert.alert('Erro', e.message || String(e));
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <TouchableOpacity style={s.importCard} activeOpacity={0.85} onPress={() => (cartoes.length ? setPick(true) : Alert.alert('Atenção', 'Cadastre um cartão primeiro.'))} disabled={busy}>
+        <View style={[s.choiceIcon, { backgroundColor: 'rgba(255,255,255,.18)', width: 46, height: 46 }]}>
+          {busy ? <ActivityIndicator color={C.white} /> : <Ionicons name="document-attach" size={24} color={C.white} />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: C.white, fontSize: 16, fontWeight: '700' }}>{busy ? 'Lendo a fatura...' : 'Importar fatura (PDF)'}</Text>
+          <Text style={{ color: 'rgba(255,255,255,.85)', fontSize: 12, marginTop: 2 }}>A IA lê o PDF e adiciona o que falta como Pendente</Text>
+        </View>
+      </TouchableOpacity>
+
+      <Modal visible={pick} transparent animationType="fade" onRequestClose={() => setPick(false)}>
+        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => setPick(false)}>
+          <View style={s.sheet}>
+            <Text style={s.sheetT}>Qual cartão é essa fatura?</Text>
+            {cartoes.map((f) => (
+              <TouchableOpacity key={f.id} style={s.opt} onPress={() => run(f.nome)}>
+                <Text style={{ color: C.text, fontSize: 15 }}>{f.nome}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+}
+
 function Ajustes({ formas, cats, rows, reload }) {
   const [cardEdit, setCardEdit] = useState(null);
   const [newCat, setNewCat] = useState('');
@@ -651,6 +704,8 @@ function Ajustes({ formas, cats, rows, reload }) {
   ]);
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
+      <ImportarFatura formas={formas} reload={reload} />
+
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={[s.sec, { marginTop: 4 }]}>Cartões e contas</Text>
         <TouchableOpacity onPress={() => setCardEdit({ tipo: 'CARTAO' })}><Ionicons name="add-circle" size={28} color={C.primary2} /></TouchableOpacity>
@@ -765,6 +820,7 @@ const s = StyleSheet.create({
   opt: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: C.border },
   tipo: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
   seg: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  importCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.primary, borderRadius: 18, padding: 16, marginBottom: 8, marginTop: 4, shadowColor: C.primary, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
   pendBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#3a2e12', borderRadius: 14, padding: 12, marginTop: 14, borderWidth: 1, borderColor: C.amber },
   // wizard
   qTitle: { color: C.text, fontSize: 24, fontWeight: '800', marginBottom: 18 },
