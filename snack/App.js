@@ -38,12 +38,12 @@ async function fetchAllLancamentos() {
 }
 
 const C = {
-  bg: '#0b1020', card: '#161d33', cardAlt: '#232c47', border: '#2a3350',
-  text: '#f1f5f9', dim: '#8b96b3', primary: '#6d5efc', primary2: '#8b7dff',
-  green: '#2ecc71', greenBg: '#12351f', red: '#ff5a6a', redBg: '#3a1620',
-  amber: '#f5a524', white: '#fff',
+  bg: '#0f172a', card: '#141d33', cardAlt: '#1c2946', border: '#24304a',
+  text: '#ffffff', dim: '#8a93a6', primary: '#2f5fe0', primary2: '#60a5fa',
+  green: '#10b981', greenBg: '#0d2a20', red: '#f04455', redBg: '#2c1519',
+  amber: '#f5b23d', white: '#fff',
 };
-const PAL = ['#6d5efc','#2ecc71','#ff5a6a','#f5a524','#22b8cf','#e64980','#9775fa','#12b886','#ff922b','#82c91e','#4dabf7','#cc5de8'];
+const PAL = ['#3b82f6','#10b981','#f04455','#d97706','#0ea5e9','#7c3aed','#0891b2','#db2777','#eab308','#4f46e5','#22c55e','#e11d48'];
 const colorFor = (k = '') => { let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return PAL[h % PAL.length]; };
 const brl = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];

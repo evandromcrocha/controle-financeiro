@@ -6,15 +6,15 @@
 <title>Controle Financeiro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f5f6f8; --surface:#ffffff; --surface-2:#fbfbfd; --elev:#ffffff;
     --border:#e7e9ee; --border-strong:#d7dae2;
-    --text:#101322; --text-2:#4b5162; --muted:#8a90a2;
-    --primary:#5b4bff; --primary-weak:#eceaff; --primary-strong:#4636e6;
-    --green:#12b76a; --green-weak:#e7f7ef; --red:#f04438; --red-weak:#fdeceb;
-    --amber:#f79009; --amber-weak:#fef3e2; --info:#2e90fa;
+    --text:#0f172a; --text-2:#475569; --muted:#8a93a6;
+    --primary:#1e40af; --primary-weak:#e6ecfb; --primary-strong:#16358f;
+    --green:#059669; --green-weak:#e4f6ef; --red:#dc2626; --red-weak:#fdeaea;
+    --amber:#d97706; --amber-weak:#fdf0e1; --info:#2563eb;
     --shadow:0 1px 2px rgba(16,19,34,.06),0 8px 24px -12px rgba(16,19,34,.14);
     --shadow-lg:0 12px 40px -12px rgba(16,19,34,.25);
     --r-lg:18px; --r-md:13px; --r-sm:9px;
@@ -22,24 +22,24 @@
     color-scheme:light;
   }
   :root[data-theme="dark"]{
-    --bg:#0a0c12; --surface:#12151d; --surface-2:#161a23; --elev:#181c26;
-    --border:#232834; --border-strong:#2d333f;
-    --text:#f2f4f8; --text-2:#b8bfcc; --muted:#828a99;
-    --primary:#7c6bff; --primary-weak:#20203a; --primary-strong:#8f80ff;
-    --green:#35c77f; --green-weak:#12271d; --red:#ff5d6c; --red-weak:#2a1720;
-    --amber:#f5b23d; --amber-weak:#2a2213; --info:#4cb8e6;
+    --bg:#0f172a; --surface:#141d33; --surface-2:#101a34; --elev:#17213c;
+    --border:#24304a; --border-strong:#2f3d5c;
+    --text:#ffffff; --text-2:#c1cadb; --muted:#7e8aa3;
+    --primary:#3b82f6; --primary-weak:#101e3a; --primary-strong:#60a5fa;
+    --green:#10b981; --green-weak:#0d2a20; --red:#f04455; --red-weak:#2c1519;
+    --amber:#f5b23d; --amber-weak:#2a2213; --info:#3b82f6;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
     --shadow-lg:0 20px 50px -18px rgba(0,0,0,.7);
     color-scheme:dark;
   }
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
-      --bg:#0a0c12; --surface:#12151d; --surface-2:#161a23; --elev:#181c26;
-      --border:#232834; --border-strong:#2d333f;
-      --text:#f2f4f8; --text-2:#b8bfcc; --muted:#828a99;
-      --primary:#7c6bff; --primary-weak:#20203a; --primary-strong:#8f80ff;
-      --green:#35c77f; --green-weak:#12271d; --red:#ff5d6c; --red-weak:#2a1720;
-      --amber:#f5b23d; --amber-weak:#2a2213; --info:#4cb8e6;
+      --bg:#0f172a; --surface:#141d33; --surface-2:#101a34; --elev:#17213c;
+      --border:#24304a; --border-strong:#2f3d5c;
+      --text:#ffffff; --text-2:#c1cadb; --muted:#7e8aa3;
+      --primary:#3b82f6; --primary-weak:#101e3a; --primary-strong:#60a5fa;
+      --green:#10b981; --green-weak:#0d2a20; --red:#f04455; --red-weak:#2c1519;
+      --amber:#f5b23d; --amber-weak:#2a2213; --info:#3b82f6;
       --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
       --shadow-lg:0 20px 50px -18px rgba(0,0,0,.7);
       color-scheme:dark;
@@ -47,7 +47,7 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
   ::selection{background:var(--primary-weak)}
   .hidden{display:none!important}
   svg{display:block}
@@ -75,7 +75,7 @@
   #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
     background:radial-gradient(1200px 600px at 80% -10%,var(--primary-weak),transparent 60%)}
   .loginbox{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:34px;box-shadow:var(--shadow-lg)}
-  .brandmark{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),#8b7dff);display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto 16px;box-shadow:0 8px 20px -6px var(--primary)}
+  .brandmark{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--primary),#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;margin:0 auto 16px;box-shadow:0 8px 20px -6px var(--primary)}
   .loginbox h1{font-size:22px;text-align:center;margin:0 0 2px}
   .loginbox .sub{text-align:center;color:var(--muted);margin-bottom:8px}
 
@@ -83,7 +83,7 @@
   #app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
   .side{background:var(--surface);border-right:1px solid var(--border);padding:22px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
   .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:16px;margin-bottom:26px;padding:0 6px}
-  .brand .m{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#8b7dff);display:flex;align-items:center;justify-content:center;color:#fff}
+  .brand .m{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff}
   .nav{display:flex;flex-direction:column;gap:3px}
   .nav button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border-radius:11px;border:none;background:none;color:var(--text-2);font-weight:600;font-size:14px;cursor:pointer;transition:.15s;text-align:left}
   .nav button:hover{background:var(--surface-2);color:var(--text)}
@@ -145,7 +145,7 @@
 
   /* import banner */
   .import{width:100%;border:none;border-radius:var(--r-lg);padding:18px;display:flex;align-items:center;gap:15px;color:#fff;text-align:left;cursor:pointer;
-    background:linear-gradient(120deg,var(--primary),#8b7dff 90%);box-shadow:0 10px 30px -12px var(--primary);transition:transform .12s}
+    background:linear-gradient(120deg,var(--primary),#3b82f6 90%);box-shadow:0 10px 30px -12px var(--primary);transition:transform .12s}
   .import:hover{transform:translateY(-1px)}
   .import .ic-wrap{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
 
@@ -213,7 +213,7 @@ const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agos
 const compLabel=c=>{if(!c||!c.includes('/'))return c||'—';const[m,y]=c.split('/');return `${MESES[+m-1]||m} ${y}`;};
 const compRef=c=>{const[m,y]=c.split('/');return `${y}-${m.padStart(2,'0')}-01`;};
 const nowComp=()=>{const d=new Date();return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;};
-const PAL=['#5b4bff','#12b76a','#f04438','#f79009','#2e90fa','#ec4899','#8b5cf6','#06b6d4','#f97316','#84cc16','#e11d48','#a855f7'];
+const PAL=['#2563eb','#059669','#f04438','#d97706','#0ea5e9','#7c3aed','#0891b2','#db2777','#ca8a04','#4f46e5','#15803d','#e11d48'];
 const colorFor=k=>{k=k||'';let h=0;for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;return PAL[h%PAL.length];};
 function toast(msg){const t=el('div',{class:'toast'},msg);document.body.append(t);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.remove(),200);},4000);}
 
