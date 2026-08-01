@@ -567,7 +567,11 @@ function Lancamentos({ doMes, onEdit }) {
                 {pend ? (
                   <Text style={{ color: C.amber, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>⚠ Pendente · toque para categorizar</Text>
                 ) : (
-                  <Text style={{ color: C.dim, fontSize: 12 }} numberOfLines={1}>{(item.categoria || '—') + ' · ' + (item.forma_pagamento || '—') + (item.parcelas_total > 1 ? ` · ${item.parcelas_total}x` : '')}</Text>
+                  <Text style={{ color: C.dim, fontSize: 12 }} numberOfLines={1}>
+                  {(item.categoria || '—') + ' · ' + (item.forma_pagamento || '—')
+                    + (item.parcelas_total > 1 ? ` · Parcela ${item.parcela_num || '?'}/${item.parcelas_total}` : '')
+                    + (item.projetado ? ' · Projeção' : '')}
+                </Text>
                 )}
               </View>
               <Text style={{ color: cred ? C.green : C.red, fontWeight: '700' }}>{(cred ? '+' : '-') + brl(Math.abs(item.valor)).replace('R$', '').trim()}</Text>

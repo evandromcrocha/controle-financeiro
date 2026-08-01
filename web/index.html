@@ -364,7 +364,11 @@ function renderLanc(v){
       const catCell=pend?el('span',{class:'chiptag',style:'background:var(--amber-weak);color:var(--amber)'},'Pendente')
         :el('span',{class:'chiptag',style:`background:${colorFor(r.categoria)}1f;color:${colorFor(r.categoria)}`},r.categoria);
       tb.append(el('tr',{onclick:()=>openLanc(r)},
-        el('td',{},el('div',{style:'display:flex;align-items:center;gap:11px'},av,el('div',{},el('div',{style:'font-weight:600'},r.descricao),r.parcelas_total>1?el('div',{class:'muted',style:'font-size:12px'},`${r.parcelas_total}x`):null))),
+        el('td',{},el('div',{style:'display:flex;align-items:center;gap:11px'},av,el('div',{},
+          el('div',{style:'font-weight:600'},r.descricao),
+          r.parcelas_total>1?el('span',{class:'chiptag',style:'background:var(--primary-weak);color:var(--info);margin-top:3px;padding:2px 8px;font-size:11px'},
+            `Parcela ${r.parcela_num||'?'}/${r.parcelas_total}`):null,
+          r.projetado?el('span',{class:'chiptag',style:'background:var(--amber-weak);color:var(--amber);margin-left:5px;padding:2px 8px;font-size:11px'},'Projeção'):null))),
         el('td',{},catCell),
         el('td',{class:'muted'},r.forma_pagamento||'—'),
         el('td',{class:'muted'},r.data_pagamento?r.data_pagamento.split('-').reverse().join('/'):'—'),
@@ -439,7 +443,7 @@ function modal(node){const bg=el('div',{class:'modal-bg',onclick:e=>{if(e.target
   document.addEventListener('keydown',function esc(ev){if(ev.key==='Escape'){bg.remove();document.removeEventListener('keydown',esc);}});return bg;}
 
 function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},r.id?'Editar lançamento':'Novo lançamento'));
-  const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,data_pagamento:r.data_pagamento||''};
+  const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,parcela_num:r.parcela_num??'',data_pagamento:r.data_pagamento||''};
   const seg=el('div',{class:'seg',style:'width:100%;margin-top:14px'});
   const opt=[['DÉBITO','Saída','var(--red)'],['CRÉDITO','Entrada','var(--green)']];
   opt.forEach(([k,l,c])=>seg.append(el('button',{style:'flex:1'+(f.tipo===k?`;background:${c};color:#fff`:''),class:f.tipo===k?'on':'',onclick:e=>{f.tipo=k;[...seg.children].forEach((x,i)=>{const on=opt[i][0]===f.tipo;x.className=on?'on':'';x.style.cssText='flex:1'+(on?`;background:${opt[i][2]};color:#fff`:'');});}},l)));
@@ -453,10 +457,14 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},
   const comp=el('input',{value:f.competencia,placeholder:'MM/AAAA',oninput:e=>f.competencia=e.target.value});
   const venc=el('input',{value:f.data_pagamento,placeholder:'AAAA-MM-DD',oninput:e=>f.data_pagamento=e.target.value});
   g.append(el('div',{},el('label',{},'Competência'),comp),el('div',{},el('label',{},'Vencimento'),venc));box.append(g);
+  const g2=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
+  const pnum=el('input',{type:'number',min:'1',value:f.parcela_num??'',placeholder:'—',oninput:e=>f.parcela_num=e.target.value});
+  const ptot=el('input',{type:'number',min:'1',value:f.parcelas_total??1,oninput:e=>f.parcelas_total=e.target.value});
+  g2.append(el('div',{},el('label',{},'Parcela nº'),pnum),el('div',{},el('label',{},'Total de parcelas'),ptot));box.append(g2);
   const acts=el('div',{style:'display:flex;gap:10px;margin-top:22px'});
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
     if(!f.descricao.trim())return toast('Informe a descrição.');if(!v)return toast('Informe o valor.');if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
-    const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null};
+    const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,parcela_num:f.parcela_num?+f.parcela_num:null,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null};
     const{error}=await(r.id?supabase.from('lancamentos').update(payload).eq('id',r.id):supabase.from('lancamentos').insert(payload));if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
   if(r.id)acts.append(el('button',{class:'btn red',onclick:async()=>{if(confirm('Excluir?')){await supabase.from('lancamentos').delete().eq('id',r.id);close();await loadAll();}}},icon('trash','ico sm')));
   box.append(acts);return box;});}
