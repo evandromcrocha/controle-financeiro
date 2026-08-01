@@ -621,10 +621,10 @@ from (values
   ('Drogaria F Lucas - Parcela 1/2','NUBANK EMP',118.5,'09/2026',2,2),
   ('Playstation 01/04','MERCADO PAGO',28.72,'09/2026',2,4),
   ('Playstation 01/04','MERCADO PAGO',28.72,'10/2026',3,4),
-  ('Playstation 01/04','MERCADO PAGO',28.72,'11/2026',4,4)
-) as v(desc, forma, valor, comp, num, tot)
+  ('Playstation 01/04'::text,'MERCADO PAGO'::text,28.72::numeric,'11/2026'::text,4::int,4::int)
+) as v(descr, forma, valor, comp, num, tot)
 where l.user_id='7544d66c-ed9b-496d-8bfa-9819590a4b5a'
-  and l.descricao = v.desc
+  and l.descricao = v.descr
   and l.forma_pagamento is not distinct from v.forma
   and round(l.valor,2) = v.valor
   and l.competencia = v.comp;
