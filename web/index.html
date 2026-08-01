@@ -224,7 +224,7 @@ $('#btnTheme').onclick=()=>applyTheme(document.documentElement.getAttribute('dat
 applyTheme(localStorage.getItem('cf-theme')|| (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));
 
 // nav
-const NAVS=[['resumo','home','Resumo'],['lanc','list','Lançamentos'],['rel','chart','Relatórios'],['ajustes','gear','Ajustes']];
+const NAVS=[['resumo','home','Resumo'],['lanc','list','Lançamentos'],['rel','chart','Relatórios'],['proj','sparkle','Projeções'],['ajustes','gear','Ajustes']];
 let state={comp:nowComp(),rows:[],cats:[],formas:[],comps:[],tab:'resumo'};
 function buildNav(){const n=$('#nav');n.innerHTML='';NAVS.forEach(([t,ic,lb])=>{const b=el('button',{class:state.tab===t?'active':'',onclick:()=>{state.tab=t;$('#title').textContent=lb;$('#compWrap').style.display=(t==='resumo'||t==='lanc')?'':'none';buildNav();render();}},icon(ic),lb);n.append(b);});}
 
@@ -241,7 +241,58 @@ const doMes=()=>state.rows.filter(r=>r.competencia===state.comp);
 const isPend=r=>!r.categoria;
 const agrupa=(list,key,tipo='DÉBITO')=>{const m=new Map();list.forEach(r=>{if(r.tipo!==tipo)return;const k=r[key]||'Outros';m.set(k,(m.get(k)||0)+Math.abs(r.valor));});return[...m.entries()].sort((a,b)=>b[1]-a[1]);};
 
-function render(){const v=$('#view');v.innerHTML='';({resumo:renderResumo,lanc:renderLanc,rel:renderRel,ajustes:renderAjustes}[state.tab])(v);}
+function render(){const v=$('#view');v.innerHTML='';({resumo:renderResumo,lanc:renderLanc,rel:renderRel,proj:renderProj,ajustes:renderAjustes}[state.tab])(v);}
+
+// ---------- PROJEÇÕES ----------
+async function renderProj(v){
+  const info=el('div',{class:'card'},
+    el('h2',{style:'margin-top:0'},'O que são projeções'),
+    el('div',{class:'muted',style:'margin-bottom:14px'},'Lançamentos futuros criados automaticamente a partir dos seus recorrentes (assinaturas, seguros, salário) e das parcelas em aberto. Você pode gerar, alterar o valor ou apagar quando quiser — sem afetar os lançamentos reais.'));
+  const ctl=el('div',{style:'display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end'});
+  const cw=el('div',{},el('label',{style:'margin-top:0'},'Projetar recorrentes até'),el('input',{id:'projAte',value:'12/2027',placeholder:'MM/AAAA',style:'width:150px'}));
+  ctl.append(cw,
+    el('button',{class:'btn',onclick:async(ev)=>{const b=ev.currentTarget;const ate=$('#projAte').value.trim();
+      b.disabled=true;b.textContent='Gerando...';
+      const{data,error}=await supabase.rpc('projetar_recorrentes',{ate});
+      b.disabled=false;b.textContent='Gerar projeções';
+      if(error)return toast(error.message);toast(`${data||0} projeção(ões) criada(s) até ${ate}.`);await loadAll();render();}},'Gerar projeções'),
+    el('button',{class:'btn ghost',onclick:async()=>{if(!confirm('Apagar TODAS as projeções? Os lançamentos reais não são afetados.'))return;
+      const{data,error}=await supabase.rpc('excluir_projecoes',{grupo_filtro:null,a_partir:null});
+      if(error)return toast(error.message);toast(`${data||0} projeção(ões) removida(s).`);await loadAll();render();}},'Apagar todas'));
+  info.append(ctl);v.append(info);
+
+  const {data:res,error}=await supabase.rpc('resumo_projecoes');
+  if(error){v.append(el('div',{class:'card',style:'margin-top:16px'},'Erro: '+error.message));return;}
+  const list=res||[];
+  const tot=state.rows.filter(r=>r.projetado);
+  const soma=tot.reduce((s,r)=>s+Math.abs(+r.valor),0);
+  v.append(el('div',{class:'row',style:'margin-top:16px'},
+    el('div',{class:'card stat'},el('div',{class:'lbl'},'Projeções ativas'),el('div',{class:'val'},String(tot.length))),
+    el('div',{class:'card stat'},el('div',{class:'lbl'},'Valor projetado'),el('div',{class:'val'},brl(soma)))));
+  v.append(el('h2',{},'Projeções por item'));
+  const box=el('div',{class:'card',style:'padding:6px'});
+  const tw=el('div',{class:'tablewrap'});const t=el('table');
+  t.append(el('thead',{},el('tr',{},...['Item','Cartão/Conta','Período','Qtd','Valor','Ações'].map(h=>el('th',{},h)))));
+  const tb=el('tbody');
+  if(!list.length)tb.append(el('tr',{},el('td',{colspan:6,class:'muted',style:'text-align:center;padding:30px'},'Nenhuma projeção. Use "Gerar projeções" acima.')));
+  list.forEach(p=>{
+    tb.append(el('tr',{},
+      el('td',{},el('b',{},p.descricao)),
+      el('td',{class:'muted'},p.forma_pagamento||'—'),
+      el('td',{class:'muted'},`${p.primeira} → ${p.ultima}`),
+      el('td',{},String(p.qtd)),
+      el('td',{class:'amt'},brl(+p.valor)),
+      el('td',{},el('div',{style:'display:flex;gap:6px'},
+        el('button',{class:'btn ghost sm',onclick:async()=>{const nv=prompt(`Novo valor para "${p.descricao}" (aplica nas projeções):`,String(p.valor));if(nv===null)return;
+          const ap=prompt('Aplicar a partir de qual competência? (MM/AAAA — vazio = todas)','');
+          const{data,error}=await supabase.rpc('ajustar_projecoes',{grupo_filtro:p.grupo,novo_valor:parseFloat(String(nv).replace(',','.')),a_partir:ap||null});
+          if(error)return toast(error.message);toast(`${data||0} projeção(ões) atualizada(s).`);await loadAll();render();}},'Alterar'),
+        el('button',{class:'btn ghost sm',onclick:async()=>{if(!confirm(`Apagar as projeções de "${p.descricao}"?`))return;
+          const{data,error}=await supabase.rpc('excluir_projecoes',{grupo_filtro:p.grupo,a_partir:null});
+          if(error)return toast(error.message);toast(`${data||0} removida(s).`);await loadAll();render();}},'Apagar')))));
+  });
+  t.append(tb);tw.append(t);box.append(tw);v.append(box);
+}
 
 // donut svg
 function donut(data,total){
@@ -339,6 +390,22 @@ function renderRel(v){
     el('span',{class:'muted'},el('span',{style:'display:inline-block;width:10px;height:10px;background:var(--green);border-radius:3px;margin-right:5px'}),'Entradas'),
     el('span',{class:'muted'},el('span',{style:'display:inline-block;width:10px;height:10px;background:var(--red);border-radius:3px;margin-right:5px'}),'Saídas')));
   v.append(c1);
+  // ---- dia da semana ----
+  const DOW=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const dw=new Array(7).fill(0), dwn=new Array(7).fill(0);
+  rows.forEach(r=>{if(r.tipo!=='DÉBITO')return;const i=r.dia_semana;if(i==null)return;dw[i]+=Math.abs(+r.valor);dwn[i]++;});
+  const mxd=Math.max(1,...dw);const totd=dw.reduce((a,b)=>a+b,0);
+  const melhor=dw.indexOf(Math.max(...dw));
+  const cd=el('div',{class:'card',style:'margin-top:16px'},el('h2',{style:'margin-top:0'},'Gastos por dia da semana'));
+  if(totd>0)cd.append(el('div',{class:'pend-banner',style:'background:var(--primary-weak);border-color:var(--primary);margin-bottom:14px'},
+    icon('chart','ico sm'),
+    el('span',{},'Você gasta mais ',el('b',{},DOW[melhor]),`: ${brl(dw[melhor])} (${(dw[melhor]/totd*100).toFixed(1)}% do total)`)));
+  DOW.forEach((n,i)=>{const w=el('div',{style:'margin-bottom:11px'});
+    w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:5px'},
+      el('span',{style:i===melhor?'font-weight:700':''},n),
+      el('span',{class:'muted'},brl(dw[i])+(dwn[i]?` · ${dwn[i]}x`:''))));
+    w.append(el('div',{class:'bar'},el('span',{style:`width:${dw[i]/mxd*100}%;background:${i===melhor?'var(--primary)':'var(--info)'}`})));cd.append(w);});
+  v.append(cd);
   const c2=el('div',{class:'card',style:'margin-top:16px'},el('h2',{style:'margin-top:0'},'Gastos por categoria (todo período) · '+brl(tot)));
   pc.forEach(([n,val])=>{const p=tot?val/tot*100:0;const w=el('div',{style:'margin-bottom:12px'});
     w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:6px'},el('span',{style:'display:flex;align-items:center;gap:8px'},el('span',{class:'dot',style:`background:${colorFor(n)}`}),n),el('span',{class:'muted'},brl(val)+' · '+p.toFixed(1)+'%')));
