@@ -389,7 +389,15 @@ function Main() {
       setRows(ls || []); setCats(cs || []); setFormas(fs || []);
       const uniq = [...new Set((ls || []).map((l) => l.competencia).filter(Boolean))];
       setComps(uniq);
-      setComp((cur) => (uniq.includes(cur) ? cur : (uniq[0] || cur)));
+      // abre no mês atual; se não houver dados nele, no mês com dados mais próximo
+      setComp((cur) => {
+        if (uniq.includes(cur)) return cur;
+        if (!uniq.length) return cur;
+        const alvo = nowComp();
+        const ord = (c) => { const [m, y] = c.split('/'); return +y * 12 + +m; };
+        return uniq.reduce((a, b) =>
+          Math.abs(ord(b) - ord(alvo)) < Math.abs(ord(a) - ord(alvo)) ? b : a);
+      });
     } catch (e) { Alert.alert('Erro', e.message); } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);

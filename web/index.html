@@ -233,7 +233,13 @@ async function loadAll(){
   const[rows,b,c]=await Promise.all([fetchAllLancamentos(),supabase.from('categorias').select('id,nome').order('nome'),supabase.from('formas_pagamento').select('id,nome,tipo,dia_vencimento').order('nome')]);
   state.rows=rows||[];state.cats=b.data||[];state.formas=c.data||[];
   state.comps=[...new Set(state.rows.map(r=>r.competencia).filter(Boolean))];
-  if(!state.comps.includes(state.comp))state.comp=state.comps[0]||state.comp;
+  // abre no mês atual; se não houver dados nele, no mês com dados mais próximo
+  if(!state.comps.includes(state.comp)){
+    const alvo=nowComp(), ord=c=>{const[m,y]=c.split('/');return +y*12+ +m;};
+    state.comp = state.comps.length
+      ? state.comps.reduce((a,b)=>Math.abs(ord(b)-ord(alvo))<Math.abs(ord(a)-ord(alvo))?b:a)
+      : state.comp;
+  }
   fillComp();render();
 }
 function fillComp(){const sel=$('#compSel');sel.innerHTML='';(state.comps.includes(state.comp)?state.comps:[state.comp,...state.comps]).forEach(c=>sel.append(el('option',{value:c,...(c===state.comp?{selected:'1'}:{})},compLabel(c))));sel.onchange=()=>{state.comp=sel.value;render();};}
