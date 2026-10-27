@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Controle Financeiro</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -224,6 +224,37 @@
     .nav button{flex-direction:column;gap:2px;padding:8px 12px;font-size:10px;border-radius:999px}
     .main{padding:14px 16px 110px}
     .topbar{top:8px}
+  }
+
+  /* ===== celular: correções de largura e menu fixo ===== */
+  .main{min-width:0}
+  .kpi,.card{min-width:0}
+  @media(max-width:920px){
+    html,body{overflow-x:hidden}
+    #app{display:block}
+    .side{position:fixed!important;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));top:auto!important;transform:none;width:auto;max-width:none;
+      margin:0;padding:6px;border-radius:26px;z-index:80;display:flex;justify-content:center}
+    .nav{flex:1;justify-content:space-around}
+    .nav button{flex:1;min-width:0;padding:7px 2px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-content:center;align-items:center}
+    .side .foot{display:none}
+    .main{padding:12px 12px calc(100px + env(safe-area-inset-bottom));max-width:100%}
+    .topbar{position:static;flex-direction:column;align-items:stretch;gap:10px;padding:12px 14px}
+    .toolbar,.ymsel{width:100%}
+    .ymsel .selectwrap{flex:1}.ymsel select{width:100%}
+    .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .kpi{padding:14px}.kpi .val{font-size:18px;overflow-wrap:anywhere}
+    .kpi .delta{white-space:normal}
+    .card{padding:16px;border-radius:18px}
+    .modal-bg{padding:0;align-items:flex-end}
+    .modal{max-width:100%!important;border-radius:22px 22px 0 0;max-height:90vh;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+    .toast{left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom))}
+  }
+  @media(max-width:520px){
+    .donutwrap{flex-direction:column;align-items:stretch!important}.donutwrap>div:first-child{align-self:center}.donutwrap>div:last-child{min-width:0!important;width:100%}
+    .donutwrap .lrow span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .lrow b{font-size:13px}
+    .card h2{font-size:14px}
   }
 </style>
 </head>
@@ -479,7 +510,7 @@ function renderResumo(v){
   const g=el('div',{class:'grid2',style:'margin-top:16px'});
   const pc=agrupa(dm,'categoria');const tot=pc.reduce((s,[,x])=>s+x,0);const top=pc.slice(0,6);
   const c1=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Distribuição por categoria'));
-  const inner=el('div',{style:'display:flex;gap:20px;align-items:center;flex-wrap:wrap'});
+  const inner=el('div',{class:'donutwrap',style:'display:flex;gap:20px;align-items:center;flex-wrap:wrap'});
   inner.append(el('div',{},top.length?donut(top,tot):el('div',{class:'muted'},'Sem gastos.')));
   const leg=el('div',{style:'flex:1;min-width:160px'});
   top.forEach(([n,val])=>leg.append(el('div',{class:'lrow',style:'cursor:pointer',title:'Ver lançamentos',onclick:()=>openDetalhe(n+' · '+cl,dm.filter(r=>(r.categoria||'Outros')===n&&r.tipo==='DÉBITO'))},el('span',{class:'dot',style:`background:${colorFor(n)}`}),el('span',{style:'flex:1'},n),el('span',{class:'muted',style:'font-size:12px'},(val/tot*100).toFixed(0)+'%'),el('b',{style:'font-variant-numeric:tabular-nums'},brl(val)))));
@@ -743,7 +774,9 @@ function renderAjustes(v){
   v.append(mBox);
   v.append(el('h2',{},'Segurança'));
   v.append(el('div',{class:'card'},el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>openSenha()},el('span',{class:'avatar',style:'background:var(--primary-weak);color:var(--primary)'},icon('gear','ico sm')),
-    el('span',{style:'flex:1'},el('div',{style:'font-weight:600'},'Alterar senha'),el('div',{class:'muted',style:'font-size:12px'},'Mínimo 8 caracteres, com letras, números e símbolos')))));
+    el('span',{style:'flex:1'},el('div',{style:'font-weight:600'},'Alterar senha'),el('div',{class:'muted',style:'font-size:12px'},'Mínimo 8 caracteres, com letras, números e símbolos'))),
+    el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>{applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}},el('span',{class:'avatar',style:'background:var(--primary-weak);color:var(--primary)'},icon('moon','ico sm')),el('span',{style:'flex:1;font-weight:600'},'Alternar tema claro/escuro')),
+    el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>supabase.auth.signOut()},el('span',{class:'avatar',style:'background:var(--red-weak);color:var(--red)'},icon('down','ico sm')),el('span',{style:'flex:1;font-weight:600;color:var(--red)'},'Sair da conta'))));
   v.append(el('h2',{},'Categorias'));
   const catAdd=el('div',{style:'display:flex;gap:10px;margin-bottom:12px'});const ci=el('input',{placeholder:'Nova categoria...',style:'max-width:320px'});
   catAdd.append(ci,el('button',{class:'btn sm',onclick:async()=>{const n=ci.value.trim().toUpperCase();if(!n)return;const{error}=await supabase.from('categorias').insert({nome:n});if(error)toast(error.message);else{ci.value='';await loadAll();}}},'Adicionar'));
