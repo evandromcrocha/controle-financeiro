@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<meta name="theme-color" content="#4f46e5">
+<meta name="theme-color" content="#8a5a3b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Financeiro">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -183,6 +183,48 @@
   .grid3{display:grid;grid-template-columns:2fr 1fr;gap:16px}
   @media(max-width:920px){.grid3{grid-template-columns:1fr}}
   .ymsel{display:flex;gap:8px}
+
+  /* ========== GLASS (inspirado no "Glassy Dashboard") ========== */
+  :root{--glass:rgba(255,255,255,.55);--glass-2:rgba(255,255,255,.38);--glass-bd:rgba(255,255,255,.7);--blur:saturate(160%) blur(22px);
+    --bgimg:radial-gradient(900px 600px at 10% 0%,#f3dcc4 0%,transparent 60%),radial-gradient(800px 600px at 100% 20%,#d9c2ad 0%,transparent 55%),radial-gradient(900px 700px at 50% 110%,#c9b6a6 0%,transparent 60%),linear-gradient(160deg,#efe6dc,#e2d6ca);
+    --primary:#8a5a3b;--primary-strong:#6f452b;--primary-weak:rgba(138,90,59,.12);--surface-2:rgba(255,255,255,.35);--border:rgba(120,90,60,.12);--border-strong:rgba(120,90,60,.2)}
+  :root[data-theme="dark"]{--glass:rgba(30,26,24,.5);--glass-2:rgba(40,34,30,.35);--glass-bd:rgba(255,255,255,.09);
+    --bgimg:radial-gradient(900px 600px at 10% 0%,#4a3426 0%,transparent 60%),radial-gradient(800px 600px at 100% 20%,#2c3a44 0%,transparent 55%),radial-gradient(900px 700px at 50% 110%,#3a2a22 0%,transparent 60%),linear-gradient(160deg,#17130f,#0f0d0c);
+    --primary:#e0a370;--primary-strong:#f0b888;--primary-weak:rgba(224,163,112,.14);--surface:#201b18;--surface-2:rgba(255,255,255,.05);--border:rgba(255,255,255,.07);--border-strong:rgba(255,255,255,.12)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass:rgba(30,26,24,.5);--glass-2:rgba(40,34,30,.35);--glass-bd:rgba(255,255,255,.09);
+    --bgimg:radial-gradient(900px 600px at 10% 0%,#4a3426 0%,transparent 60%),radial-gradient(800px 600px at 100% 20%,#2c3a44 0%,transparent 55%),linear-gradient(160deg,#17130f,#0f0d0c);
+    --primary:#e0a370;--primary-strong:#f0b888;--primary-weak:rgba(224,163,112,.14);--surface:#201b18;--surface-2:rgba(255,255,255,.05);--border:rgba(255,255,255,.07);--border-strong:rgba(255,255,255,.12)}}
+  body{background:var(--bgimg);background-attachment:fixed;min-height:100vh}
+  .card,.loginbox,.modal,.toast{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--glass-bd);box-shadow:0 8px 32px -12px rgba(60,40,20,.25)}
+  .card{border-radius:22px}
+  .kpi.click:hover{transform:translateY(-4px)}
+  th{background:transparent;backdrop-filter:var(--blur)}
+  tbody tr:hover,.clickrow:hover{background:var(--glass-2)}
+  input,select{background:var(--glass-2);border-color:var(--glass-bd)}
+  .iconbtn,.btn.ghost{background:var(--glass-2);border-color:var(--glass-bd)}
+  .seg{background:var(--glass-2);border-color:var(--glass-bd)} .seg button.on{background:var(--glass)}
+  #login{background:none}
+  select{appearance:none;-webkit-appearance:none}
+  @media(max-width:560px){.kpis{grid-template-columns:1fr 1fr;gap:10px}.kpi .val{font-size:19px}.kpi .hint,.kpi .delta{font-size:11px}}
+  .brandmark,.brand .m{background:linear-gradient(135deg,#c08457,#8a5a3b)}
+  .import{background:linear-gradient(120deg,#a8704a,#d49a6a)}
+  /* menu lateral flutuante */
+  #app{grid-template-columns:240px 1fr;gap:0}
+  .side{margin:16px;height:calc(100vh - 32px);top:16px;border-radius:24px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--glass-bd)}
+  .nav button.active{background:var(--glass);box-shadow:0 2px 10px -4px rgba(60,40,20,.3)}
+  .main{padding:28px 30px 28px 14px}
+  .topbar{position:sticky;top:12px;z-index:20;padding:10px 12px 10px 20px;border-radius:20px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--glass-bd)}
+  .topbar h1{font-size:22px}
+  /* celular: barra inferior em pílula, como no modelo */
+  @media(max-width:920px){
+    #app{grid-template-columns:1fr}
+    .side{position:fixed;top:auto;bottom:14px;left:50%;transform:translateX(-50%);height:auto;margin:0;padding:6px;border-radius:999px;z-index:50;width:auto;max-width:calc(100vw - 24px)}
+    .side{flex-wrap:nowrap}.side .brand{display:none}.side .foot{margin:0 0 0 2px;gap:4px}.side .foot .btn{font-size:0;gap:0;padding:0 11px;min-height:40px;border-radius:999px}.side .foot .iconbtn{border-radius:999px}
+    .nav{flex-direction:row;flex-wrap:nowrap;gap:2px}
+    .nav button{flex-direction:column;gap:2px;padding:8px 12px;font-size:10px;border-radius:999px}
+    .main{padding:14px 16px 110px}
+    .topbar{top:8px}
+  }
 </style>
 </head>
 <body>
