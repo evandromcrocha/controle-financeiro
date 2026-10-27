@@ -702,6 +702,27 @@ function openMeta(o={}){modal(close=>{const box=el('div');box.append(el('h3',{},
     const{error}=await supabase.from('orcamentos').upsert({categoria:sel.value,valor:v},{onConflict:'user_id,categoria'});if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
   box.append(bar);return box;});}
 
+function openSenha(){modal(close=>{const box=el('div');box.append(el('h3',{},'Alterar senha'));
+  const atual=el('input',{type:'password',autocomplete:'current-password'}),n1=el('input',{type:'password',autocomplete:'new-password'}),n2=el('input',{type:'password',autocomplete:'new-password'});
+  const regras=[['8+ caracteres',v=>v.length>=8],['Letra',v=>/[A-Za-zÀ-ÿ]/.test(v)],['Número',v=>/\d/.test(v)],['Símbolo (!@#...)',v=>/[^A-Za-zÀ-ÿ0-9\s]/.test(v)]];
+  const chk=el('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px'});
+  const upd=()=>{chk.innerHTML='';regras.forEach(([t,f])=>{const ok=f(n1.value);chk.append(el('span',{class:'chiptag',style:`background:${ok?'var(--green-weak)':'var(--surface-2)'};color:${ok?'var(--green)':'var(--muted)'}`},(ok?'✓ ':'• ')+t));});};
+  n1.addEventListener('input',upd);upd();
+  const err=el('div',{style:'color:var(--red);font-size:13px;margin-top:10px'});
+  box.append(el('label',{},'Senha atual'),atual,el('label',{},'Nova senha'),n1,chk,el('label',{},'Confirmar nova senha'),n2,err);
+  box.append(el('div',{style:'display:flex;gap:10px;margin-top:20px'},el('button',{class:'btn ghost',onclick:close},'Cancelar'),
+    el('button',{class:'btn',style:'flex:1',onclick:async(ev)=>{err.textContent='';const v=n1.value;
+      if(!regras.every(([,f])=>f(v)))return err.textContent='A nova senha não atende às regras.';
+      if(v!==n2.value)return err.textContent='As senhas não conferem.';
+      if(v===atual.value)return err.textContent='A nova senha deve ser diferente da atual.';
+      const b=ev.currentTarget;b.disabled=true;
+      const{data:{user}}=await supabase.auth.getUser();
+      const{error:e1}=await supabase.auth.signInWithPassword({email:user.email,password:atual.value});
+      if(e1){b.disabled=false;return err.textContent='Senha atual incorreta.';}
+      const{error}=await supabase.auth.updateUser({password:v});b.disabled=false;
+      if(error)return err.textContent=error.message;close();toast('Senha alterada com sucesso.');}},'Salvar nova senha')));
+  return box;});}
+
 function renderAjustes(v){
   const imp=el('button',{class:'import',onclick:()=>importarFatura()},el('span',{class:'ic-wrap'},icon('doc')),
     el('span',{},el('div',{style:'font-weight:650;font-size:16px'},'Importar fatura (PDF)'),el('div',{style:'font-size:13px;opacity:.9'},'A IA lê o PDF e adiciona o que falta como Pendente')));
@@ -720,6 +741,9 @@ function renderAjustes(v){
   (state.orc||[]).forEach(o=>mBox.append(el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>openMeta(o)},el('span',{class:'dot',style:`background:${colorFor(o.categoria)}`}),el('span',{style:'flex:1'},o.categoria),el('b',{},brl(+o.valor)),icon('gear','ico sm'))));
   if(!state.orc?.length)mBox.append(el('div',{class:'muted'},'Nenhuma meta ainda.'));
   v.append(mBox);
+  v.append(el('h2',{},'Segurança'));
+  v.append(el('div',{class:'card'},el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>openSenha()},el('span',{class:'avatar',style:'background:var(--primary-weak);color:var(--primary)'},icon('gear','ico sm')),
+    el('span',{style:'flex:1'},el('div',{style:'font-weight:600'},'Alterar senha'),el('div',{class:'muted',style:'font-size:12px'},'Mínimo 8 caracteres, com letras, números e símbolos')))));
   v.append(el('h2',{},'Categorias'));
   const catAdd=el('div',{style:'display:flex;gap:10px;margin-bottom:12px'});const ci=el('input',{placeholder:'Nova categoria...',style:'max-width:320px'});
   catAdd.append(ci,el('button',{class:'btn sm',onclick:async()=>{const n=ci.value.trim().toUpperCase();if(!n)return;const{error}=await supabase.from('categorias').insert({nome:n});if(error)toast(error.message);else{ci.value='';await loadAll();}}},'Adicionar'));
