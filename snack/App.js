@@ -348,7 +348,7 @@ function Wizard({ initial, cats, formas, onSave, onDel, onClose }) {
               <TouchableOpacity style={[s.btn, { backgroundColor: accent }]} onPress={salvar} activeOpacity={0.85}>
                 <Text style={s.btnT}>{editing ? 'Salvar alterações' : 'Salvar lançamento'}</Text>
               </TouchableOpacity>
-              {editing && <TouchableOpacity style={{ padding: 14, alignItems: 'center' }} onPress={() => onDel(initial.id)}><Text style={{ color: C.red, fontWeight: '600' }}>Excluir</Text></TouchableOpacity>}
+              {editing && <TouchableOpacity style={{ padding: 14, alignItems: 'center' }} onPress={() => onDel(initial)}><Text style={{ color: C.red, fontWeight: '600' }}>Excluir</Text></TouchableOpacity>}
             </View>
           )}
         </View>
@@ -414,15 +414,46 @@ function Main() {
       data_pagamento: f.data_pagamento || null,
     };
     try {
-      if (f.id) await supabase.from('lancamentos').update(payload).eq('id', f.id);
-      else await supabase.from('lancamentos').insert(payload);
+      const tot = Number(f.parcelas_total) || 1;
+      let res;
+      if (!f.id && tot > 1) {
+        // compra parcelada nova: cria uma parcela em cada mês
+        const grupo = 'PARC:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        const [m0, y0] = f.competencia.split('/').map(Number);
+        const linhas = [];
+        for (let i = 0; i < tot; i++) {
+          const d = new Date(y0, m0 - 1 + i, 1);
+          const comp = String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+          let dp = null;
+          if (payload.data_pagamento) {
+            const b = new Date(payload.data_pagamento + 'T12:00:00'); b.setMonth(b.getMonth() + i);
+            dp = b.toISOString().slice(0, 10);
+          }
+          linhas.push({ ...payload, parcela_num: i + 1, parcelas_total: tot, competencia: comp,
+            competencia_ref: compRef(comp), data_pagamento: dp, grupo, projetado: false });
+        }
+        res = await supabase.from('lancamentos').insert(linhas);
+      } else if (f.id) {
+        res = await supabase.from('lancamentos').update(payload).eq('id', f.id);
+      } else {
+        res = await supabase.from('lancamentos').insert(payload);
+      }
+      if (res.error) throw res.error;
       setWiz(null); load();
     } catch (e) { Alert.alert('Erro', e.message); }
   };
-  const del = (id) => Alert.alert('Excluir', 'Excluir este lançamento?', [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: async () => { await supabase.from('lancamentos').delete().eq('id', id); setWiz(null); load(); } },
-  ]);
+  const del = (item) => {
+    const so = { text: 'Só esta', style: 'destructive', onPress: async () => { await supabase.from('lancamentos').delete().eq('id', item.id); setWiz(null); load(); } };
+    const opts = [{ text: 'Cancelar', style: 'cancel' }, so];
+    if (item.grupo && item.parcelas_total > 1) {
+      opts.push({ text: 'Esta e as próximas', style: 'destructive', onPress: async () => {
+        const { data, error } = await supabase.rpc('excluir_parcelas_seguintes', { p_id: item.id });
+        if (error) return Alert.alert('Erro', error.message);
+        Alert.alert('Pronto', `${data || 0} parcela(s) removida(s).`); setWiz(null); load();
+      } });
+    }
+    Alert.alert('Excluir', item.parcelas_total > 1 ? `Parcela ${item.parcela_num || '?'}/${item.parcelas_total}. O que deseja excluir?` : 'Excluir este lançamento?', opts);
+  };
 
   if (loading) return <SafeAreaView style={s.safe}><ActivityIndicator style={{ marginTop: 60 }} color={C.primary} size="large" /></SafeAreaView>;
 

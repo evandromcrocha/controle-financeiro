@@ -253,7 +253,7 @@ function render(){const v=$('#view');v.innerHTML='';({resumo:renderResumo,lanc:r
 async function renderProj(v){
   const info=el('div',{class:'card'},
     el('h2',{style:'margin-top:0'},'O que são projeções'),
-    el('div',{class:'muted',style:'margin-bottom:14px'},'Lançamentos futuros criados automaticamente a partir dos seus recorrentes (assinaturas, seguros, salário) e das parcelas em aberto. Você pode gerar, alterar o valor ou apagar quando quiser — sem afetar os lançamentos reais.'));
+    el('div',{class:'muted',style:'margin-bottom:14px'},'Meses futuros dos seus lançamentos recorrentes (assinaturas, seguros, salário). Compras parceladas não aparecem aqui: elas já são criadas em todos os meses no momento do lançamento. Gerar, alterar ou apagar projeções não afeta os lançamentos reais.'));
   const ctl=el('div',{style:'display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end'});
   const cw=el('div',{},el('label',{style:'margin-top:0'},'Projetar recorrentes até'),el('input',{id:'projAte',value:'12/2027',placeholder:'MM/AAAA',style:'width:150px'}));
   ctl.append(cw,
@@ -471,8 +471,31 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
     if(!f.descricao.trim())return toast('Informe a descrição.');if(!v)return toast('Informe o valor.');if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
     const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,parcela_num:f.parcela_num?+f.parcela_num:null,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null};
-    const{error}=await(r.id?supabase.from('lancamentos').update(payload).eq('id',r.id):supabase.from('lancamentos').insert(payload));if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
+    let error;
+    const tot=+f.parcelas_total||1;
+    if(!r.id && tot>1){
+      // compra parcelada nova: cria uma parcela em cada mês
+      const grupo='PARC:'+crypto.randomUUID();
+      const[m0,y0]=f.competencia.split('/').map(Number);
+      const linhas=[];
+      for(let i=0;i<tot;i++){
+        const d=new Date(y0,m0-1+i,1);
+        const comp=String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+        let dp=null;
+        if(payload.data_pagamento){const b=new Date(payload.data_pagamento+'T12:00:00');b.setMonth(b.getMonth()+i);dp=b.toISOString().slice(0,10);}
+        linhas.push({...payload,parcela_num:i+1,parcelas_total:tot,competencia:comp,competencia_ref:compRef(comp),data_pagamento:dp,grupo,projetado:false});
+      }
+      ({error}=await supabase.from('lancamentos').insert(linhas));
+      if(!error)toast(`${tot} parcelas criadas de ${f.competencia} em diante.`);
+    }else{
+      ({error}=await(r.id?supabase.from('lancamentos').update(payload).eq('id',r.id):supabase.from('lancamentos').insert(payload)));
+    }
+    if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
   if(r.id)acts.append(el('button',{class:'btn red',onclick:async()=>{if(confirm('Excluir?')){await supabase.from('lancamentos').delete().eq('id',r.id);close();await loadAll();}}},icon('trash','ico sm')));
+  if(r.id&&r.grupo&&r.parcelas_total>1)box.append(el('button',{class:'btn ghost',style:'width:100%;margin-top:10px',onclick:async()=>{
+    if(!confirm(`Apagar esta parcela (${r.parcela_num||'?'}/${r.parcelas_total}) e todas as próximas?`))return;
+    const{data,error}=await supabase.rpc('excluir_parcelas_seguintes',{p_id:r.id});
+    if(error)return toast(error.message);toast(`${data||0} parcela(s) removida(s).`);close();await loadAll();}},icon('trash','ico sm'),'Apagar esta e as próximas parcelas'));
   box.append(acts);return box;});}
 
 function openCard(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},r.id?'Editar cartão/conta':'Novo cartão/conta'));
