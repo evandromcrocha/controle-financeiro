@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user) return json({ ok: false, erro: "Não autenticado." }, 401);
 
-    const { pdfBase64, cartao, competencia } = await req.json();
+    const { pdfBase64, cartao, competencia, modo } = await req.json();
     if (!pdfBase64 || !cartao) return json({ ok: false, erro: "Informe o PDF e o cartão." }, 400);
 
     // 1) extrair texto do PDF
@@ -91,6 +91,11 @@ Deno.serve(async (req) => {
     const [mm, yy] = comp.split("/");
     const compRef = `${yy}-${mm}-01`;
     const compras = Array.isArray(parsed.compras) ? parsed.compras : [];
+
+    // modo prévia: só devolve o que foi lido; a revisão e a gravação são feitas no app
+    if (modo === "previa") {
+      return json({ ok: true, competencia: comp, vencimento: parsed.vencimento ?? null, compras });
+    }
 
     // 3) dedupe contra o existente (mesmo cartão + competência)
     const { data: existentes } = await supabase
