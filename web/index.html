@@ -344,6 +344,8 @@
     .mdate{display:inline}
     .modal.wide .mfoot .btn:last-child{flex:1}
   }
+  .msort{display:none}
+  @media(max-width:920px){.msort{display:block}}
 </style>
 </head>
 <body>
@@ -1065,7 +1067,10 @@ function revisarImportacao(itens,cartao,comp){
     [['todos','Todos ('+L.length+')'],['novo','Novos ('+cnt.novo+')'],['dup','Já lançados ('+cnt.dup+')'],['cred','Créditos/estornos ('+cnt.cred+')']].forEach(([k,t])=>seg.append(el('button',{class:k===filtro?'on':'',onclick:ev=>{filtro=k;[...seg.children].forEach(b=>b.classList.remove('on'));ev.currentTarget.classList.add('on');draw();}},t)));
     const bulk=el('select',{style:'width:auto;min-width:200px'});bulk.append(el('option',{value:''},'Aplicar categoria aos marcados…'));state.cats.forEach(c=>bulk.append(el('option',{value:c.nome},c.nome)));
     bulk.onchange=()=>{if(!bulk.value)return;L.forEach(x=>{if(x.sel)x.categoria=bulk.value;});bulk.value='';draw();};
-    box.append(seg,el('div',{style:'display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap'},bulk,el('span',{class:'muted',style:'font-size:12px'},'Categoria sugerida pelo histórico; você pode trocar em cada linha.')));
+    const sortR={key:'data',dir:'desc'};
+    const msel=el('select',{class:'msort',style:'width:auto',onchange:e=>{const[k,d]=e.target.value.split(':');sortR.key=k;sortR.dir=d;draw();}});
+    [['data:desc','Data (recentes)'],['data:asc','Data (antigas)'],['valor:desc','Maior valor'],['valor:asc','Menor valor'],['descricao:asc','Descrição A–Z'],['categoria:asc','Categoria A–Z']].forEach(([v,t])=>msel.append(el('option',{value:v},t)));
+    box.append(seg,el('div',{style:'display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap'},bulk,msel,el('span',{class:'muted',style:'font-size:12px'},'Categoria sugerida pelo histórico; você pode trocar em cada linha.')));
     const wrap=el('div',{class:'tablewrap revlist'});box.append(wrap);
     const foot=el('div',{class:'mfoot'});const resumo=el('div',{class:'muted',style:'font-size:13px;flex:1;align-self:center'});
     const go=el('button',{class:'btn',onclick:salvar},'Importar selecionados');
@@ -1075,9 +1080,12 @@ function revisarImportacao(itens,cartao,comp){
       resumo.textContent=`${s.length} selecionado(s) · ${brl(tot)}`+(s.some(x=>!x.categoria)?` · ${s.filter(x=>!x.categoria).length} sem categoria`:'');go.disabled=!s.length;}
     function draw(){wrap.innerHTML='';const t=el('table');
       const all=el('input',{type:'checkbox',style:'width:auto',onchange:e=>{vis().forEach(x=>x.sel=e.target.checked);draw();}});
-      t.append(el('thead',{},el('tr',{},el('th',{},all),el('th',{},'Data'),el('th',{},'Descrição'),el('th',{},'Categoria'),el('th',{class:'amt'},'Valor'))));
+      const th=sortHeader([['data','Data'],['descricao','Descrição'],['categoria','Categoria'],['valor','Valor','amt']],sortR,k=>{toggleSort(sortR,k);msel.value=sortR.key+':'+sortR.dir;draw();});
+      th.firstChild.prepend(el('th',{},all));t.append(th);
       const tb=el('tbody');const vis=()=>L.filter(x=>filtro==='todos'||x.status===filtro);
-      vis().forEach(x=>{const cs=el('select',{style:'min-width:150px;padding:6px 8px',onchange:e=>{x.categoria=e.target.value;atualiza();}});
+      const SK={data:x=>x.data||'',descricao:x=>x.descricao.toLowerCase(),categoria:x=>(x.categoria||'~').toLowerCase(),valor:x=>x.tipo==='CRÉDITO'?-x.valor:x.valor};
+      const ord=vis().slice().sort((a,b)=>{const f=SK[sortR.key],va=f(a),vb=f(b);return(va<vb?-1:va>vb?1:a.i-b.i)*(sortR.dir==='asc'?1:-1);});
+      ord.forEach(x=>{const cs=el('select',{style:'min-width:150px;padding:6px 8px',onchange:e=>{x.categoria=e.target.value;atualiza();}});
         cs.append(el('option',{value:''},'— pendente —'));state.cats.forEach(c=>cs.append(el('option',{value:c.nome,...(c.nome===x.categoria?{selected:1}:{})},c.nome)));
         const[tg,bg,fg]=TAG[x.status];
         tb.append(el('tr',{style:'cursor:default'+(x.sel?'':';opacity:.6')},
