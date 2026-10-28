@@ -346,6 +346,8 @@
   }
   .msort{display:none}
   @media(max-width:920px){.msort{display:block}}
+  select.catsel{width:auto;max-width:190px;border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;min-height:0}
+  select.catsel:hover{filter:brightness(.95);box-shadow:0 0 0 1px currentColor}
 </style>
 </head>
 <body>
@@ -674,13 +676,13 @@ function openDetalhe(titulo,list){
 }
 
 function renderLanc(v){
-  let filtro='todos',q='';
+  let filtro=state.lancFiltro||'todos',q=state.lancQ||'';
   const bar=el('div',{style:'display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap'});
   const sw=el('div',{style:'position:relative;flex:1;min-width:200px;max-width:320px'});
-  const inp=el('input',{placeholder:'Buscar lançamento...',style:'padding-left:38px',oninput:e=>{q=e.target.value;draw();}});
+  const inp=el('input',{placeholder:'Buscar lançamento...',value:q,style:'padding-left:38px',oninput:e=>{q=state.lancQ=e.target.value;draw();}});
   sw.append(inp,el('span',{style:'position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)'},icon('search','ico sm')));
   const seg=el('div',{class:'seg'});const bseg={};
-  const bt=(k,l)=>el('button',{class:filtro===k?('on'+(k==='pendentes'?' amber':'')):'',onclick:()=>{filtro=k;Object.entries(bseg).forEach(([kk,b])=>b.className=kk===k?('on'+(kk==='pendentes'?' amber':'')):'');draw();}},l);
+  const bt=(k,l)=>el('button',{class:filtro===k?('on'+(k==='pendentes'?' amber':'')):'',onclick:()=>{filtro=state.lancFiltro=k;Object.entries(bseg).forEach(([kk,b])=>b.className=kk===k?('on'+(kk==='pendentes'?' amber':'')):'');draw();}},l);
   bseg.todos=bt('todos','Todos');bseg.pendentes=bt('pendentes','Pendentes');seg.append(bseg.todos,bseg.pendentes);
   const add=el('button',{class:'btn',style:'margin-left:auto',onclick:()=>openLanc()},icon('plus','ico sm'),'Novo');
   bar.append(sw,seg,add);v.append(bar);
@@ -696,8 +698,16 @@ function renderLanc(v){
     if(!list.length)tb.append(el('tr',{},el('td',{colspan:5,class:'muted',style:'text-align:center;padding:34px'},filtro==='pendentes'?'Nada pendente 🎉':'Nenhum lançamento.')));
     list.forEach(r=>{const cred=r.tipo==='CRÉDITO';const pend=isPend(r);
       const av=el('span',{class:'avatar',style:`background:${(pend?'var(--amber)':colorFor(r.categoria))}1f;color:${pend?'var(--amber)':colorFor(r.categoria)}`},icon(pend?'sparkle':'tag','ico sm'));
-      const catCell=pend?el('span',{class:'chiptag',style:'background:var(--amber-weak);color:var(--amber)'},'Pendente')
-        :el('span',{class:'chiptag',style:`background:${colorFor(r.categoria)}1f;color:${colorFor(r.categoria)}`},r.categoria);
+      // categoria editável direto na tabela
+      const cor=pend?'var(--amber)':colorFor(r.categoria);
+      const catCell=el('select',{class:'catsel',title:'Alterar categoria',style:`background:${pend?'var(--amber-weak)':cor+'1f'};color:${cor}`,
+        onclick:e=>e.stopPropagation(),
+        onchange:async e=>{const nova=e.target.value||null;e.target.disabled=true;
+          const{error}=await supabase.from('lancamentos').update({categoria:nova}).eq('id',r.id);
+          if(error){e.target.disabled=false;return toast(error.message);}
+          r.categoria=nova;state._catIdx=null;toast(nova?`“${r.descricao}” → ${nova}`:'Categoria removida');draw();}});
+      catCell.append(el('option',{value:''},'Pendente'));
+      state.cats.forEach(c=>catCell.append(el('option',{value:c.nome,...(c.nome===r.categoria?{selected:1}:{})},c.nome)));
       tb.append(el('tr',{onclick:()=>openLanc(r)},
         el('td',{},el('div',{style:'display:flex;align-items:center;gap:11px'},av,el('div',{},
           el('div',{style:'font-weight:600'},r.descricao),
