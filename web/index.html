@@ -301,7 +301,30 @@
     .pchips .stepper.sm{margin-left:0}
     .modal .mhead h3{font-size:17px}
   }
-  @media(max-width:400px){.fgrid{grid-template-columns:1fr}}
+  @media(max-width:920px){.fgrid .cartao{grid-column:1/-1}}
+  @media(max-width:340px){.fgrid{grid-template-columns:1fr}}
+  /* ajustes finos do formulário */
+  .fgrid>*{min-width:0}
+  .modal input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;min-height:44px;line-height:1.2}
+  .modal input[type=date]::-webkit-date-and-time-value{text-align:left}
+  .pchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .pchips::-webkit-scrollbar{display:none}
+  .pchips button{flex:none}
+  .pchips .stepper.sm{flex:none;margin-left:auto}
+  @media(min-width:921px){
+    .modal.lanc{max-width:720px}
+    .modal.lanc .fgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .modal.lanc .fgrid .f2{grid-column:span 2}
+  }
+  @media(max-width:520px){
+    .pchips{gap:5px;overflow:visible}
+    .pchips button[data-n="6"]{display:none}
+    .pchips button{padding:6px 10px;font-size:13px;min-height:34px}
+    .pchips .stepper.sm .iconbtn{width:32px;height:32px}
+    .pchips .stepper.sm .stv{min-width:28px;font-size:14px}
+    .compnav .iconbtn{width:36px;height:44px}
+    .compnav .cv{font-size:14px}
+  }
 </style>
 </head>
 <body>
@@ -832,7 +855,7 @@ function renderAjustes(v){
   v.append(catBox);
 }
 
-function modal(node,wide){const bg=el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});const m=el('div',{class:'modal'+(wide?' wide':'')});m.append(node(()=>bg.remove()));bg.append(m);document.body.append(bg);
+function modal(node,wide){const bg=el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});const m=el('div',{class:'modal'+(wide===true?' wide':wide?' '+wide:'')});m.append(node(()=>bg.remove()));bg.append(m);document.body.append(bg);
   document.addEventListener('keydown',function esc(ev){if(ev.key==='Escape'){bg.remove();document.removeEventListener('keydown',esc);}});return bg;}
 
 function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{class:'mhead'},el('h3',{},r.id?'Editar lançamento':'Novo lançamento'),el('button',{class:'iconbtn',onclick:close,title:'Fechar','aria-label':'Fechar'},'✕')));
@@ -848,7 +871,7 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
   const cat=el('select',{onchange:e=>f.categoria=e.target.value});cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
   grid.append(fld('Categoria',cat));
   const fp=el('select',{onchange:e=>{f.forma_pagamento=e.target.value;autoVenc();}});fp.append(el('option',{value:''},'— escolha —'));state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
-  grid.append(fld('Cartão / conta',fp,'full'));
+  grid.append(fld('Cartão / conta',fp,'cartao'));
   // competência: mês da fatura/extrato, navegável com ‹ ›; lembra a última usada
   if(!r.id){try{const lc=localStorage.getItem('cf-lastcomp');if(lc)f.competencia=lc;}catch{}}
   const compTxt=el('span',{class:'cv'});
@@ -863,7 +886,7 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
       vHint.textContent=`Automático: dia ${fo.dia_vencimento} do ${fo.nome}`;}
     else vHint.textContent=f.forma_pagamento?'Esse cartão/conta não tem dia de vencimento cadastrado (Ajustes)':'Escolha o cartão/conta para preencher';};
   const updComp=()=>{compTxt.textContent=compLabel(f.competencia);autoVenc();};
-  grid.append(fld('Competência (mês da fatura)',compBox),fld('Vencimento',el('div',{},venc,vHint)));
+  grid.append(fld('Competência',compBox),fld('Vencimento',el('div',{},venc,vHint)));
   updComp();if(f.data_pagamento&&r.id)vHint.textContent='';
   const stepper=(get,set,min,max)=>{const out=el('span',{class:'stv'});
     const upd=()=>{out.textContent=String(get());};
@@ -915,7 +938,7 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
     if(!confirm(`Apagar esta parcela (${r.parcela_num||'?'}/${r.parcelas_total}) e todas as próximas?`))return;
     const{data,error}=await supabase.rpc('excluir_parcelas_seguintes',{p_id:r.id});
     if(error)return toast(error.message);toast(`${data||0} parcela(s) removida(s).`);close();await loadAll();}},icon('trash','ico sm'),'Apagar esta e as próximas parcelas'));
-  box.append(acts);return box;});}
+  box.append(acts);return box;},'lanc');}
 
 function openCard(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},r.id?'Editar cartão/conta':'Novo cartão/conta'));
   const f={nome:r.nome||'',tipo:r.tipo||'CARTAO',dia_vencimento:r.dia_vencimento||''};
