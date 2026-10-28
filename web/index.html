@@ -859,7 +859,7 @@ function modal(node,wide){const bg=el('div',{class:'modal-bg',onclick:e=>{if(e.t
   document.addEventListener('keydown',function esc(ev){if(ev.key==='Escape'){bg.remove();document.removeEventListener('keydown',esc);}});return bg;}
 
 function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{class:'mhead'},el('h3',{},r.id?'Editar lançamento':'Novo lançamento'),el('button',{class:'iconbtn',onclick:close,title:'Fechar','aria-label':'Fechar'},'✕')));
-  const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,parcela_num:r.parcela_num??'',data_pagamento:r.data_pagamento||''};
+  const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,parcela_num:r.parcela_num??'',data_pagamento:r.data_pagamento||'',data_transacao:r.data_transacao||(r.id?'':new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10))};
   const seg=el('div',{class:'seg',style:'width:100%;margin-top:14px'});
   const opt=[['DÉBITO','Saída','var(--red)'],['CRÉDITO','Entrada','var(--green)']];
   opt.forEach(([k,l,c])=>seg.append(el('button',{style:'flex:1'+(f.tipo===k?`;background:${c};color:#fff`:''),class:f.tipo===k?'on':'',onclick:e=>{f.tipo=k;[...seg.children].forEach((x,i)=>{const on=opt[i][0]===f.tipo;x.className=on?'on':'';x.style.cssText='flex:1'+(on?`;background:${opt[i][2]};color:#fff`:'');});}},l)));
@@ -867,11 +867,12 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
   const fld=(lab,node,cls)=>el('div',{class:'fld'+(cls?' '+cls:'')},el('label',{},lab),node);
   const grid=el('div',{class:'fgrid'});box.append(grid);
   const valIn=el('input',{type:'number',inputmode:'decimal',step:'0.01',value:f.valor,oninput:e=>{f.valor=e.target.value;info();},placeholder:'0,00'});
-  grid.append(fld('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value,placeholder:'Ex: Mercado'}),'full'),fld('Valor (R$)',valIn));
+  grid.append(fld('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value,placeholder:'Ex: Mercado'}),'full'),fld('Valor (R$)',valIn),
+    fld('Data da compra',el('input',{type:'date',value:f.data_transacao,onchange:e=>f.data_transacao=e.target.value})));
   const cat=el('select',{onchange:e=>f.categoria=e.target.value});cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
   grid.append(fld('Categoria',cat));
   const fp=el('select',{onchange:e=>{f.forma_pagamento=e.target.value;autoVenc();}});fp.append(el('option',{value:''},'— escolha —'));state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
-  grid.append(fld('Cartão / conta',fp,'cartao'));
+  grid.append(fld('Cartão / conta',fp));
   // competência: mês da fatura/extrato, navegável com ‹ ›; lembra a última usada
   if(!r.id){try{const lc=localStorage.getItem('cf-lastcomp');if(lc)f.competencia=lc;}catch{}}
   const compTxt=el('span',{class:'cv'});
@@ -911,7 +912,7 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
   const acts=el('div',{class:'mfoot'});
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
     if(!f.descricao.trim())return toast('Informe a descrição.');if(!v)return toast('Informe o valor.');if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
-    const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,parcela_num:f.parcela_num?+f.parcela_num:null,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null};
+    const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,parcela_num:f.parcela_num?+f.parcela_num:null,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null,data_transacao:/^\d{4}-\d{2}-\d{2}$/.test(f.data_transacao)?f.data_transacao:null};
     let error;
     const tot=+f.parcelas_total||1;
     if(!r.id && tot>1){
