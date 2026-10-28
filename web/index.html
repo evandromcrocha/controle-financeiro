@@ -625,6 +625,7 @@ const SORTS={
   forma_pagamento:r=>(r.forma_pagamento||'').toLowerCase(),
   parcela:r=>r.parcelas_total>1?(r.parcela_num||0)/r.parcelas_total:-1,
   data_pagamento:r=>r.data_pagamento||'',
+  data_transacao:r=>r.data_transacao||'',
   valor:r=>Math.abs(+r.valor),
 };
 function ordenar(list,sort){
@@ -692,10 +693,10 @@ function renderLanc(v){
     if(q.trim())list=list.filter(r=>(r.descricao+r.categoria+r.forma_pagamento).toLowerCase().includes(q.toLowerCase()));
     const pc=doMes().filter(isPend).length;bseg.pendentes.textContent='Pendentes'+(pc?` (${pc})`:'');
     wrap.innerHTML='';const tw=el('div',{class:'tablewrap'});const t=el('table');
-    t.append(sortHeader([['descricao','Descrição'],['categoria','Categoria'],['forma_pagamento','Cartão/Conta'],['data_pagamento','Venc.'],['valor','Valor','amt']],state.sortLanc,k=>{toggleSort(state.sortLanc,k);draw();}));
+    t.append(sortHeader([['descricao','Descrição'],['categoria','Categoria'],['forma_pagamento','Cartão/Conta'],['data_transacao','Compra'],['data_pagamento','Venc.'],['valor','Valor','amt']],state.sortLanc,k=>{toggleSort(state.sortLanc,k);draw();}));
     list=ordenar(list,state.sortLanc);
     const tb=el('tbody');
-    if(!list.length)tb.append(el('tr',{},el('td',{colspan:5,class:'muted',style:'text-align:center;padding:34px'},filtro==='pendentes'?'Nada pendente 🎉':'Nenhum lançamento.')));
+    if(!list.length)tb.append(el('tr',{},el('td',{colspan:6,class:'muted',style:'text-align:center;padding:34px'},filtro==='pendentes'?'Nada pendente 🎉':'Nenhum lançamento.')));
     list.forEach(r=>{const cred=r.tipo==='CRÉDITO';const pend=isPend(r);
       const av=el('span',{class:'avatar',style:`background:${(pend?'var(--amber)':colorFor(r.categoria))}1f;color:${pend?'var(--amber)':colorFor(r.categoria)}`},icon(pend?'sparkle':'tag','ico sm'));
       // categoria editável direto na tabela
@@ -716,7 +717,8 @@ function renderLanc(v){
           r.projetado?el('span',{class:'chiptag',style:'background:var(--amber-weak);color:var(--amber);margin-left:5px;padding:2px 8px;font-size:11px'},'Projeção'):null))),
         el('td',{},catCell),
         el('td',{class:'muted'},r.forma_pagamento||'—'),
-        el('td',{class:'muted'},r.data_pagamento?r.data_pagamento.split('-').reverse().join('/'):'—'),
+        el('td',{class:'muted',style:'white-space:nowrap'},r.data_transacao?r.data_transacao.split('-').reverse().join('/'):''),
+        el('td',{class:'muted',style:'white-space:nowrap'},r.data_pagamento?r.data_pagamento.split('-').reverse().join('/'):'—'),
         el('td',{class:'amt',style:`color:${cred?'var(--green)':'var(--red)'}`},(cred?'+ ':'- ')+brl(Math.abs(r.valor)).replace('R$','').trim())));});
     t.append(tb);tw.append(t);wrap.append(tw);
   }
