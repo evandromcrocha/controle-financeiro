@@ -976,7 +976,7 @@ const normDesc=s=>(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase()
 const toks=s=>new Set(normDesc(s).split(' ').filter(w=>w.length>2));
 const simil=(a,b)=>{const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let n=0;A.forEach(w=>{if(B.has(w))n++;});return n/Math.min(A.size,B.size);};
 const diasEntre=(a,b)=>Math.abs((new Date(a+'T12:00:00')-new Date(b+'T12:00:00'))/864e5);
-function parseValorBR(v){v=String(v??'').trim().replace(/R\$\s?/,'');if(!v)return NaN;
+function parseValorBR(v){v=String(v??'').trim().replace(/R\$/,'').replace(/\s+/g,'');if(!v)return NaN;
   if(/,\d{1,2}$/.test(v))v=v.replace(/\./g,'').replace(',','.');else v=v.replace(/,/g,'');return parseFloat(v);}
 function parseData(v){v=String(v||'').trim();let m=v.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
   m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(m){const y=m[3].length===2?'20'+m[3]:m[3];return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
@@ -1003,18 +1003,17 @@ function sugerirCategoria(desc){
   if(!c){let best=0;for(const[kk,v]of state._catIdx){const s=simil(k,kk);if(s>best&&s>=0.6){best=s;c=v;}}}
   return c?Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]:null;
 }
-function acharDuplicado(it,cartao){
-  let melhor=null;
-  for(const r of state.rows){
-    if(r.forma_pagamento!==cartao||Math.abs(Math.abs(+r.valor)-it.valor)>0.01)continue;
-    const dOk=it.data&&r.data_transacao?diasEntre(it.data,r.data_transacao)<=2:r.competencia===it.competencia;
-    if(!dOk)continue;
-    if(it.parcela_total>1&&r.parcelas_total>1&&r.parcela_num&&r.parcela_num!==it.parcela_atual&&r.competencia!==it.competencia)continue;
-    const s=simil(it.descricao,r.descricao);
-    const score=(it.data&&r.data_transacao&&diasEntre(it.data,r.data_transacao)===0?1:0)+s;
-    if(s>=0.5||(s>0&&score>=1.2)){if(!melhor||score>melhor.score)melhor={r,score};}
-  }
-  return melhor?.r||null;
+
+// casa cada linha importada com no máximo um lançamento existente:
+// 1º pela data da compra (±2 dias); depois, pelo mesmo mês de competência
+// (parcelas e recorrentes trazem no banco uma data diferente da original)
+function marcarDuplicados(L,cartao){
+  const pool=state.rows.filter(r=>r.forma_pagamento===cartao);const usados=new Set();
+  const cands=(x,ok,tol=0.01)=>pool.filter(r=>!usados.has(r.id)&&Math.abs(Math.abs(+r.valor)-x.valor)<=tol&&simil(x.descricao,r.descricao)>=0.5&&ok(r));
+  L.forEach(x=>{if(!x.data||x.parcela_atual>1)return;const c=cands(x,r=>r.data_transacao&&diasEntre(x.data,r.data_transacao)<=2)
+    .sort((a,b)=>diasEntre(x.data,a.data_transacao)-diasEntre(x.data,b.data_transacao))[0];if(c){x.dup=c;usados.add(c.id);}});
+  L.forEach(x=>{if(x.dup)return;const c=cands(x,r=>r.competencia===x.competencia,Math.max(0.01,x.valor*0.01))
+    .sort((a,b)=>((b.parcela_num===x.parcela_atual)-(a.parcela_num===x.parcela_atual))||(simil(x.descricao,b.descricao)-simil(x.descricao,a.descricao)))[0];if(c){x.dup=c;usados.add(c.id);}});
 }
 
 function importarFatura(){const cartoes=state.formas.filter(f=>f.tipo==='CARTAO'||f.tipo==='CONTA');if(!cartoes.length)return toast('Cadastre um cartão primeiro.');
@@ -1026,7 +1025,7 @@ function importarFatura(){const cartoes=state.formas.filter(f=>f.tipo==='CARTAO'
     let comp=(()=>{try{return localStorage.getItem('cf-lastcomp')||state.comp;}catch{return state.comp;}})();
     const ct=el('span',{class:'cv'},compLabel(comp));
     const cn=el('div',{class:'compnav'},el('button',{type:'button',class:'iconbtn',onclick:()=>{comp=shiftComp(comp,-1);ct.textContent=compLabel(comp);}},'‹'),ct,el('button',{type:'button',class:'iconbtn',onclick:()=>{comp=shiftComp(comp,1);ct.textContent=compLabel(comp);}},'›'));
-    const file=el('input',{type:'file',accept:'.csv,.ofx,.txt,application/pdf,text/csv'});
+    const file=el('input',{type:'file',accept:'.csv,.ofx,.txt,application/pdf,text/csv',onchange:()=>{const m=(file.files[0]?.name||'').match(/(20\d{2})[-_](\d{2})[-_]\d{2}/);if(m){comp=m[2]+'/'+m[1];ct.textContent=compLabel(comp);status.textContent='Competência detectada pelo nome do arquivo: '+compLabel(comp);}}});
     grid.append(el('div',{class:'fld'},el('label',{},'Cartão / conta'),sel),el('div',{class:'fld'},el('label',{},'Competência (mês da fatura)'),cn),el('div',{class:'fld full'},el('label',{},'Arquivo'),file));
     const status=el('div',{class:'muted',style:'margin-top:10px;font-size:13px'});
     const btn=el('button',{class:'btn',style:'width:100%;margin-top:14px',onclick:async()=>{const fl=file.files[0];if(!fl)return toast('Selecione o arquivo.');
@@ -1056,8 +1055,9 @@ function revisarImportacao(itens,cartao,comp){
   const L=itens.map((it,i)=>{
     const credito=it.valor<0;const valor=Math.abs(+it.valor);
     const x={i,data:it.data,descricao:String(it.descricao).trim(),valor,tipo:credito?'CRÉDITO':'DÉBITO',parcela_atual:+it.parcela_atual||1,parcela_total:+it.parcela_total||1,competencia:comp};
-    x.dup=acharDuplicado(x,cartao);x.categoria=x.dup?.categoria||sugerirCategoria(x.descricao)||'';
-    x.status=x.dup?'dup':credito?'cred':'novo';x.sel=x.status==='novo';return x;});
+    return x;});
+  marcarDuplicados(L,cartao);
+  L.forEach(x=>{x.categoria=x.dup?.categoria||sugerirCategoria(x.descricao)||'';x.status=x.dup?'dup':x.tipo==='CRÉDITO'?'cred':'novo';x.sel=x.status==='novo';});
   modal(close=>{const box=el('div');
     const cnt={novo:0,dup:0,cred:0};L.forEach(x=>cnt[x.status]++);
     box.append(el('div',{class:'mhead'},el('div',{},el('h3',{},'Revisar importação'),el('div',{class:'muted',style:'font-size:13px'},`${cartao} · ${compLabel(comp)} · ${L.length} linha(s) lidas`)),el('button',{class:'iconbtn',onclick:close,title:'Fechar'},'✕')));
@@ -1093,7 +1093,7 @@ function revisarImportacao(itens,cartao,comp){
       t.append(tb);wrap.append(t);all.checked=vis().length&&vis().every(x=>x.sel);atualiza();}
     async function salvar(){const s=L.filter(x=>x.sel);if(!s.length)return;go.disabled=true;go.textContent='Importando...';
       const linhas=[];
-      s.forEach(x=>{const base={descricao:x.descricao.slice(0,200),valor:x.valor,tipo:x.tipo,valor_final:x.tipo==='CRÉDITO'?x.valor:-x.valor,categoria:x.categoria||null,forma_pagamento:cartao,data_transacao:x.data||null,projetado:false};
+      s.forEach(x=>{const base={descricao:x.descricao.slice(0,200),valor:x.valor,tipo:x.tipo,valor_final:x.tipo==='CRÉDITO'?x.valor:-x.valor,categoria:x.categoria||null,forma_pagamento:cartao,data_transacao:x.parcela_atual>1?null:(x.data||null),projetado:false};
         if(x.parcela_total>1){const grupo='PARC:'+crypto.randomUUID();
           for(let n=x.parcela_atual,k=0;n<=x.parcela_total;n++,k++){const c=shiftComp(comp,k);let dp=null;if(venc){const b=new Date(venc+'T12:00:00');b.setMonth(b.getMonth()+k);dp=b.toISOString().slice(0,10);}
             // parcelas futuras já existentes não são recriadas
