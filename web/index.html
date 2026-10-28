@@ -256,6 +256,28 @@
     .lrow b{font-size:13px}
     .card h2{font-size:14px}
   }
+
+  /* janela de lançamento */
+  .modal-bg{z-index:120}
+  .toast{z-index:130}
+  .mhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:4px}
+  .mhead h3{margin:0}
+  .mfoot{display:flex;gap:10px;margin-top:22px;position:sticky;bottom:-24px;padding:12px 0;background:var(--surface)}
+  .mfoot .btn{min-height:48px}
+  .stepper{display:flex;align-items:center;gap:8px}
+  .stepper .iconbtn{width:44px;height:44px;font-size:20px;font-weight:600}
+  .stepper .stv{min-width:40px;text-align:center;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+  .pchips{display:flex;flex-wrap:wrap;gap:8px}
+  .pchips button{border:1px solid var(--glass-bd);background:var(--glass-2);color:var(--text-2);border-radius:999px;padding:9px 14px;font-weight:600;font-size:14px;min-height:40px;cursor:pointer}
+  .pchips button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+  @media(max-width:920px){
+    input,select{font-size:16px}
+    .modal{background:var(--surface);backdrop-filter:none}
+    .mfoot{bottom:calc(-18px - env(safe-area-inset-bottom));padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+    .modal-bg{align-items:flex-end}
+    .modal{max-height:92dvh}
+  }
+  .modal input,.modal select,.modal .iconbtn,.modal .btn.ghost,.modal .pchips button:not(.on),.modal .seg{border:1px solid var(--border-strong);background:rgba(127,127,127,.07)}
 </style>
 </head>
 <body>
@@ -789,7 +811,7 @@ function renderAjustes(v){
 function modal(node,wide){const bg=el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});const m=el('div',{class:'modal'+(wide?' wide':'')});m.append(node(()=>bg.remove()));bg.append(m);document.body.append(bg);
   document.addEventListener('keydown',function esc(ev){if(ev.key==='Escape'){bg.remove();document.removeEventListener('keydown',esc);}});return bg;}
 
-function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},r.id?'Editar lançamento':'Novo lançamento'));
+function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{class:'mhead'},el('h3',{},r.id?'Editar lançamento':'Novo lançamento'),el('button',{class:'iconbtn',onclick:close,title:'Fechar','aria-label':'Fechar'},'✕')));
   const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,parcela_num:r.parcela_num??'',data_pagamento:r.data_pagamento||''};
   const seg=el('div',{class:'seg',style:'width:100%;margin-top:14px'});
   const opt=[['DÉBITO','Saída','var(--red)'],['CRÉDITO','Entrada','var(--green)']];
@@ -801,14 +823,35 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},
   const cat=add('Categoria',el('select',{onchange:e=>f.categoria=e.target.value}));cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
   const fp=add('Forma de pagamento',el('select',{onchange:e=>f.forma_pagamento=e.target.value}));fp.append(el('option',{value:''},'—'));state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
   const g=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
-  const comp=el('input',{value:f.competencia,placeholder:'MM/AAAA',oninput:e=>f.competencia=e.target.value});
-  const venc=el('input',{value:f.data_pagamento,placeholder:'AAAA-MM-DD',oninput:e=>f.data_pagamento=e.target.value});
+  const toM=c=>{const[m,y]=(c||'').split('/');return y?`${y}-${m}`:'';};
+  const comp=el('input',{type:'month',value:toM(f.competencia),onchange:e=>{const[y,m]=e.target.value.split('-');if(m)f.competencia=`${m}/${y}`;}});
+  const venc=el('input',{type:'date',value:f.data_pagamento,onchange:e=>f.data_pagamento=e.target.value});
   g.append(el('div',{},el('label',{},'Competência'),comp),el('div',{},el('label',{},'Vencimento'),venc));box.append(g);
-  const g2=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
-  const pnum=el('input',{type:'number',min:'1',value:f.parcela_num??'',placeholder:'—',oninput:e=>f.parcela_num=e.target.value});
-  const ptot=el('input',{type:'number',min:'1',value:f.parcelas_total??1,oninput:e=>f.parcelas_total=e.target.value});
-  g2.append(el('div',{},el('label',{},'Parcela nº'),pnum),el('div',{},el('label',{},'Total de parcelas'),ptot));box.append(g2);
-  const acts=el('div',{style:'display:flex;gap:10px;margin-top:22px'});
+  const stepper=(get,set,min,max)=>{const out=el('span',{class:'stv'});
+    const upd=()=>{out.textContent=get()>1||min>0?String(get()):'—';};
+    const w=el('div',{class:'stepper'},el('button',{type:'button',class:'iconbtn',onclick:()=>{set(Math.max(min,(+get()||min)-1));upd();info();}},'−'),out,
+      el('button',{type:'button',class:'iconbtn',onclick:()=>{set(Math.min(max(),(+get()||min)+1));upd();info();}},'+'));upd();return w;};
+  const pinfo=el('div',{class:'muted',style:'font-size:13px;margin-top:8px'});
+  const info=()=>{const t=+f.parcelas_total||1,v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
+    pinfo.textContent=t>1?(r.id?`Parcela ${f.parcela_num||'?'} de ${t}`:`${t}x de ${brl(v)} · cria uma parcela por mês a partir da competência`):'À vista (1x)';};
+  if(r.id){
+    const g2=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
+    g2.append(el('div',{},el('label',{},'Parcela nº'),stepper(()=>+f.parcela_num||1,v=>f.parcela_num=v,1,()=>+f.parcelas_total||1)),
+      el('div',{},el('label',{},'Total de parcelas'),stepper(()=>+f.parcelas_total||1,v=>f.parcelas_total=v,1,()=>120)));box.append(g2);
+  }else{
+    box.append(el('label',{},'Parcelas'));
+    const chips=el('div',{class:'pchips'});
+    const marcar=()=>[...chips.children].forEach(b=>b.classList.toggle('on',+b.dataset.n===(+f.parcelas_total||1)));
+    [1,2,3,4,5,6,10,12].forEach(n=>chips.append(el('button',{type:'button','data-n':n,onclick:()=>{f.parcelas_total=n;marcar();info();outN.textContent=n>1?n:'—';}},n===1?'À vista':n+'x')));
+    const outN=el('span',{class:'stv'});
+    const outro=el('div',{class:'stepper'},el('button',{type:'button',class:'iconbtn',onclick:()=>{f.parcelas_total=Math.max(1,(+f.parcelas_total||1)-1);marcar();info();outN.textContent=f.parcelas_total>1?f.parcelas_total:'—';}},'−'),outN,
+      el('button',{type:'button',class:'iconbtn',onclick:()=>{f.parcelas_total=Math.min(120,(+f.parcelas_total||1)+1);marcar();info();outN.textContent=f.parcelas_total;}},'+'));
+    outN.textContent=(+f.parcelas_total||1)>1?f.parcelas_total:'—';
+    box.append(chips,el('div',{style:'display:flex;align-items:center;gap:10px;margin-top:8px'},el('span',{class:'muted',style:'font-size:13px'},'Outro:'),outro));marcar();
+  }
+  box.append(pinfo);info();
+  box.querySelector('input[type=number]')?.addEventListener('input',info);
+  const acts=el('div',{class:'mfoot'});
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
     if(!f.descricao.trim())return toast('Informe a descrição.');if(!v)return toast('Informe o valor.');if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
     const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,parcela_num:f.parcela_num?+f.parcela_num:null,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null};
@@ -832,6 +875,7 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},
       ({error}=await(r.id?supabase.from('lancamentos').update(payload).eq('id',r.id):supabase.from('lancamentos').insert(payload)));
     }
     if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
+  acts.prepend(el('button',{class:'btn ghost',onclick:close},'Cancelar'));
   if(r.id)acts.append(el('button',{class:'btn red',onclick:async()=>{if(confirm('Excluir?')){await supabase.from('lancamentos').delete().eq('id',r.id);close();await loadAll();}}},icon('trash','ico sm')));
   if(r.id&&r.grupo&&r.parcelas_total>1)box.append(el('button',{class:'btn ghost',style:'width:100%;margin-top:10px',onclick:async()=>{
     if(!confirm(`Apagar esta parcela (${r.parcela_num||'?'}/${r.parcelas_total}) e todas as próximas?`))return;
