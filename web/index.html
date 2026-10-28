@@ -278,6 +278,30 @@
     .modal{max-height:92dvh}
   }
   .modal input,.modal select,.modal .iconbtn,.modal .btn.ghost,.modal .pchips button:not(.on),.modal .seg{border:1px solid var(--border-strong);background:rgba(127,127,127,.07)}
+  /* formulário compacto */
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+  .fgrid .full{grid-column:1/-1}
+  .fgrid label{margin:8px 0 4px}
+  .modal{padding:20px 24px;max-height:96vh;background:var(--surface);backdrop-filter:none}
+  .fgrid .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .compnav{display:flex;align-items:center;gap:6px}
+  .compnav .cv{flex:1;text-align:center;font-weight:600;white-space:nowrap}
+  .compnav .iconbtn{width:44px;height:44px;font-size:20px}
+  .pchips{align-items:center}
+  .pchips .stepper.sm{margin-left:auto;gap:4px}
+  .stepper.sm .iconbtn{width:38px;height:38px}
+  .stepper.sm .stv{min-width:36px;font-size:15px}
+  .modal .seg{margin-top:8px!important}
+  .mfoot{margin-top:14px}
+  @media(max-width:920px){
+    .fgrid{grid-template-columns:1fr 1fr;gap:0 10px}
+    .fgrid label{margin:8px 0 4px;font-size:12px}
+    .modal input,.modal select{padding:9px 10px}
+    .pchips{gap:6px}.pchips button{padding:7px 11px;min-height:36px;font-size:13px}
+    .pchips .stepper.sm{margin-left:0}
+    .modal .mhead h3{font-size:17px}
+  }
+  @media(max-width:400px){.fgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -817,40 +841,50 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
   const opt=[['DÉBITO','Saída','var(--red)'],['CRÉDITO','Entrada','var(--green)']];
   opt.forEach(([k,l,c])=>seg.append(el('button',{style:'flex:1'+(f.tipo===k?`;background:${c};color:#fff`:''),class:f.tipo===k?'on':'',onclick:e=>{f.tipo=k;[...seg.children].forEach((x,i)=>{const on=opt[i][0]===f.tipo;x.className=on?'on':'';x.style.cssText='flex:1'+(on?`;background:${opt[i][2]};color:#fff`:'');});}},l)));
   box.append(seg);
-  const add=(lab,node)=>{box.append(el('label',{},lab),node);return node;};
-  add('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value,placeholder:'Ex: Mercado'}));
-  add('Valor (R$)',el('input',{type:'number',step:'0.01',value:f.valor,oninput:e=>f.valor=e.target.value,placeholder:'0,00'}));
-  const cat=add('Categoria',el('select',{onchange:e=>f.categoria=e.target.value}));cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
-  const fp=add('Forma de pagamento',el('select',{onchange:e=>f.forma_pagamento=e.target.value}));fp.append(el('option',{value:''},'—'));state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
-  const g=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
-  const toM=c=>{const[m,y]=(c||'').split('/');return y?`${y}-${m}`:'';};
-  const comp=el('input',{type:'month',value:toM(f.competencia),onchange:e=>{const[y,m]=e.target.value.split('-');if(m)f.competencia=`${m}/${y}`;}});
-  const venc=el('input',{type:'date',value:f.data_pagamento,onchange:e=>f.data_pagamento=e.target.value});
-  g.append(el('div',{},el('label',{},'Competência'),comp),el('div',{},el('label',{},'Vencimento'),venc));box.append(g);
+  const fld=(lab,node,cls)=>el('div',{class:'fld'+(cls?' '+cls:'')},el('label',{},lab),node);
+  const grid=el('div',{class:'fgrid'});box.append(grid);
+  const valIn=el('input',{type:'number',inputmode:'decimal',step:'0.01',value:f.valor,oninput:e=>{f.valor=e.target.value;info();},placeholder:'0,00'});
+  grid.append(fld('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value,placeholder:'Ex: Mercado'}),'full'),fld('Valor (R$)',valIn));
+  const cat=el('select',{onchange:e=>f.categoria=e.target.value});cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
+  grid.append(fld('Categoria',cat));
+  const fp=el('select',{onchange:e=>{f.forma_pagamento=e.target.value;autoVenc();}});fp.append(el('option',{value:''},'— escolha —'));state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
+  grid.append(fld('Cartão / conta',fp,'full'));
+  // competência: mês da fatura/extrato, navegável com ‹ ›; lembra a última usada
+  if(!r.id){try{const lc=localStorage.getItem('cf-lastcomp');if(lc)f.competencia=lc;}catch{}}
+  const compTxt=el('span',{class:'cv'});
+  const compBox=el('div',{class:'compnav'},el('button',{type:'button',class:'iconbtn',title:'Mês anterior',onclick:()=>{f.competencia=shiftComp(f.competencia,-1);updComp();}},'‹'),compTxt,
+    el('button',{type:'button',class:'iconbtn',title:'Próximo mês',onclick:()=>{f.competencia=shiftComp(f.competencia,1);updComp();}},'›'));
+  const venc=el('input',{type:'date',value:f.data_pagamento,onchange:e=>{f.data_pagamento=e.target.value;f.vencManual=true;vHint.textContent='Definido manualmente';}});
+  const vHint=el('div',{class:'hint'});
+  let vencAuto=!f.data_pagamento;
+  const autoVenc=()=>{if(!vencAuto&&f.vencManual)return;const fo=state.formas.find(x=>x.nome===f.forma_pagamento);
+    if(fo?.dia_vencimento){const[m,y]=f.competencia.split('/').map(Number);const dim=new Date(y,m,0).getDate();
+      f.data_pagamento=`${y}-${String(m).padStart(2,'0')}-${String(Math.min(fo.dia_vencimento,dim)).padStart(2,'0')}`;venc.value=f.data_pagamento;f.vencManual=false;vencAuto=true;
+      vHint.textContent=`Automático: dia ${fo.dia_vencimento} do ${fo.nome}`;}
+    else vHint.textContent=f.forma_pagamento?'Esse cartão/conta não tem dia de vencimento cadastrado (Ajustes)':'Escolha o cartão/conta para preencher';};
+  const updComp=()=>{compTxt.textContent=compLabel(f.competencia);autoVenc();};
+  grid.append(fld('Competência (mês da fatura)',compBox),fld('Vencimento',el('div',{},venc,vHint)));
+  updComp();if(f.data_pagamento&&r.id)vHint.textContent='';
   const stepper=(get,set,min,max)=>{const out=el('span',{class:'stv'});
-    const upd=()=>{out.textContent=get()>1||min>0?String(get()):'—';};
+    const upd=()=>{out.textContent=String(get());};
     const w=el('div',{class:'stepper'},el('button',{type:'button',class:'iconbtn',onclick:()=>{set(Math.max(min,(+get()||min)-1));upd();info();}},'−'),out,
       el('button',{type:'button',class:'iconbtn',onclick:()=>{set(Math.min(max(),(+get()||min)+1));upd();info();}},'+'));upd();return w;};
-  const pinfo=el('div',{class:'muted',style:'font-size:13px;margin-top:8px'});
+  const pinfo=el('div',{class:'hint'});
   const info=()=>{const t=+f.parcelas_total||1,v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
-    pinfo.textContent=t>1?(r.id?`Parcela ${f.parcela_num||'?'} de ${t}`:`${t}x de ${brl(v)} · cria uma parcela por mês a partir da competência`):'À vista (1x)';};
+    pinfo.textContent=t>1?(r.id?`Parcela ${f.parcela_num||'?'} de ${t}`:`${t}x de ${brl(v)} · uma parcela por mês a partir de ${compLabel(f.competencia)}`):'À vista';};
   if(r.id){
-    const g2=el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:10px'});
-    g2.append(el('div',{},el('label',{},'Parcela nº'),stepper(()=>+f.parcela_num||1,v=>f.parcela_num=v,1,()=>+f.parcelas_total||1)),
-      el('div',{},el('label',{},'Total de parcelas'),stepper(()=>+f.parcelas_total||1,v=>f.parcelas_total=v,1,()=>120)));box.append(g2);
+    grid.append(fld('Parcela nº',stepper(()=>+f.parcela_num||1,v=>f.parcela_num=v,1,()=>+f.parcelas_total||1)),
+      fld('Total de parcelas',stepper(()=>+f.parcelas_total||1,v=>f.parcelas_total=v,1,()=>120)));
   }else{
-    box.append(el('label',{},'Parcelas'));
-    const chips=el('div',{class:'pchips'});
-    const marcar=()=>[...chips.children].forEach(b=>b.classList.toggle('on',+b.dataset.n===(+f.parcelas_total||1)));
-    [1,2,3,4,5,6,10,12].forEach(n=>chips.append(el('button',{type:'button','data-n':n,onclick:()=>{f.parcelas_total=n;marcar();info();outN.textContent=n>1?n:'—';}},n===1?'À vista':n+'x')));
     const outN=el('span',{class:'stv'});
-    const outro=el('div',{class:'stepper'},el('button',{type:'button',class:'iconbtn',onclick:()=>{f.parcelas_total=Math.max(1,(+f.parcelas_total||1)-1);marcar();info();outN.textContent=f.parcelas_total>1?f.parcelas_total:'—';}},'−'),outN,
-      el('button',{type:'button',class:'iconbtn',onclick:()=>{f.parcelas_total=Math.min(120,(+f.parcelas_total||1)+1);marcar();info();outN.textContent=f.parcelas_total;}},'+'));
-    outN.textContent=(+f.parcelas_total||1)>1?f.parcelas_total:'—';
-    box.append(chips,el('div',{style:'display:flex;align-items:center;gap:10px;margin-top:8px'},el('span',{class:'muted',style:'font-size:13px'},'Outro:'),outro));marcar();
+    const chips=el('div',{class:'pchips'});
+    const marcar=()=>{[...chips.querySelectorAll('[data-n]')].forEach(b=>b.classList.toggle('on',+b.dataset.n===(+f.parcelas_total||1)));outN.textContent=(+f.parcelas_total||1)+'x';};
+    const setN=n=>{f.parcelas_total=Math.min(120,Math.max(1,n));marcar();info();};
+    [1,2,3,6,10,12].forEach(n=>chips.append(el('button',{type:'button','data-n':n,onclick:()=>setN(n)},n===1?'À vista':n+'x')));
+    chips.append(el('span',{class:'stepper sm'},el('button',{type:'button',class:'iconbtn',onclick:()=>setN((+f.parcelas_total||1)-1)},'−'),outN,el('button',{type:'button',class:'iconbtn',onclick:()=>setN((+f.parcelas_total||1)+1)},'+')));
+    grid.append(fld('Parcelas',el('div',{},chips),'full'));marcar();
   }
-  box.append(pinfo);info();
-  box.querySelector('input[type=number]')?.addEventListener('input',info);
+  grid.append(el('div',{class:'full'},pinfo));info();
   const acts=el('div',{class:'mfoot'});
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
     if(!f.descricao.trim())return toast('Informe a descrição.');if(!v)return toast('Informe o valor.');if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
@@ -874,7 +908,7 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
     }else{
       ({error}=await(r.id?supabase.from('lancamentos').update(payload).eq('id',r.id):supabase.from('lancamentos').insert(payload)));
     }
-    if(error)return toast(error.message);close();await loadAll();}},'Salvar'));
+    if(error)return toast(error.message);try{localStorage.setItem('cf-lastcomp',f.competencia);}catch{}close();await loadAll();}},'Salvar'));
   acts.prepend(el('button',{class:'btn ghost',onclick:close},'Cancelar'));
   if(r.id)acts.append(el('button',{class:'btn red',onclick:async()=>{if(confirm('Excluir?')){await supabase.from('lancamentos').delete().eq('id',r.id);close();await loadAll();}}},icon('trash','ico sm')));
   if(r.id&&r.grupo&&r.parcelas_total>1)box.append(el('button',{class:'btn ghost',style:'width:100%;margin-top:10px',onclick:async()=>{
