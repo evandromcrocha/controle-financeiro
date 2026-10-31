@@ -607,11 +607,13 @@ function renderResumo(v){
   const leg=el('div',{style:'flex:1;min-width:160px'});
   top.forEach(([n,val])=>leg.append(el('div',{class:'lrow',style:'cursor:pointer',title:'Ver lançamentos',onclick:()=>openDetalhe(n+' · '+cl,dm.filter(r=>(r.categoria||'Outros')===n&&r.tipo==='DÉBITO'))},el('span',{class:'dot',style:`background:${colorFor(n)}`}),el('span',{style:'flex:1'},n),el('span',{class:'muted',style:'font-size:12px'},(val/tot*100).toFixed(0)+'%'),el('b',{style:'font-variant-numeric:tabular-nums'},brl(val)))));
   inner.append(leg);c1.append(inner);
-  const pf=agrupa(dm,'forma_pagamento');const mxf=pf[0]?.[1]||1;
+  // fatura de cada cartão/conta: débitos menos estornos/créditos lançados nele
+  const fat=new Map();dm.forEach(r=>{const k=r.forma_pagamento||'Outros';const f=fat.get(k)||{d:0,c:0};r.tipo==='CRÉDITO'?f.c+=Math.abs(+r.valor):f.d+=Math.abs(+r.valor);fat.set(k,f);});
+  const pf=[...fat.entries()].filter(([,f])=>f.d>0).map(([k,f])=>{const cartao=state.formas.find(x=>x.nome===k)?.tipo==='CARTAO';return[k,cartao?f.d-f.c:f.d,cartao?f.c:0];}).sort((a,b)=>b[1]-a[1]);const mxf=Math.max(1,...pf.map(x=>x[1]));
   const c2=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Gastos por cartão / conta'),el('div',{class:'muted',style:'font-size:12px;margin:-6px 0 12px'},'Clique em um cartão para ver os lançamentos'));
-  pf.forEach(([n,val])=>{const w=el('div',{class:'clickrow',title:'Ver lançamentos',onclick:()=>openDetalhe(n+' · '+cl,dm.filter(r=>(r.forma_pagamento||'Outros')===n&&r.tipo==='DÉBITO'))});
-    w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:6px'},el('span',{style:'font-weight:500'},n),el('span',{class:'muted',style:'font-variant-numeric:tabular-nums'},brl(val))));
-    w.append(el('div',{class:'bar'},el('span',{style:`width:${val/mxf*100}%;background:${colorFor(n)}`})));c2.append(w);});
+  pf.forEach(([n,val,cr])=>{const w=el('div',{class:'clickrow',title:'Ver lançamentos',onclick:()=>openDetalhe(n+' · '+cl,dm.filter(r=>(r.forma_pagamento||'Outros')===n))});
+    w.append(el('div',{style:'display:flex;justify-content:space-between;margin-bottom:6px'},el('span',{style:'font-weight:500'},n),el('span',{class:'muted',style:'font-variant-numeric:tabular-nums;text-align:right'},brl(val),cr?el('div',{style:'font-size:11px;color:var(--green)'},'inclui estornos de '+brl(cr)):null)));
+    w.append(el('div',{class:'bar'},el('span',{style:`width:${Math.max(0,val)/mxf*100}%;background:${colorFor(n)}`})));c2.append(w);});
   if(!pf.length)c2.append(el('div',{class:'muted'},'Sem gastos.'));
   g.append(c1,c2);v.append(g);
 }
