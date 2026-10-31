@@ -1049,7 +1049,7 @@ function importarFatura(){const cartoes=state.formas.filter(f=>f.tipo==='CARTAO'
           status.textContent='Lendo o PDF com IA (pode levar ~20s)...';
           const b64=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result.split(',')[1]);fr.onerror=rej;fr.readAsDataURL(fl);});
           const{data,error}=await supabase.functions.invoke('importar-fatura',{body:{pdfBase64:b64,cartao:sel.value,competencia:comp,modo:'previa'}});
-          if(error)throw error;if(!data?.ok)throw new Error(data?.erro||'Falha ao ler o PDF.');
+          if(error){let msg=error.message;try{const j=await error.context.json();if(j?.erro)msg=j.erro;}catch{}throw new Error(msg);}if(!data?.ok)throw new Error(data?.erro||'Falha ao ler o PDF.');
           itens=(data.compras||[]).map(c=>({data:c.data,descricao:c.descricao,valor:Math.abs(+c.valor),parcela_atual:c.parcela_atual,parcela_total:c.parcela_total}));
         }else{
           const txt=await fl.text();
