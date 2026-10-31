@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
+<meta name="build" content="__BUILD__">
 <meta name="theme-color" content="#8a5a3b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Financeiro">
@@ -1137,5 +1138,15 @@ supabase.auth.onAuthStateChange((_e,session)=>{if(session){$('#login').classList
 supabase.auth.getSession().then(({data})=>{if(data.session){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}});
 </script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
+<script>
+// atualiza sozinho quando há versão nova publicada (evita ficar preso no cache do navegador/iPhone)
+(function(){const atual=document.querySelector('meta[name=build]').content;if(atual==='__BUILD__')return;
+  let checando=false;
+  async function checar(){if(checando)return;checando=true;
+    try{const r=await fetch('version.txt?t='+Date.now(),{cache:'no-store'});if(r.ok){const v=(await r.text()).trim();
+      if(v&&v!==atual&&!document.querySelector('.modal-bg')){location.reload();}}}catch{}checando=false;}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checar();});
+  setInterval(checar,5*60*1000);checar();})();
+</script>
 </body>
 </html>

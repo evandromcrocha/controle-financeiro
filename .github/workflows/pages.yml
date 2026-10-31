@@ -16,6 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Marca a versão publicada
+        run: |
+          echo "$GITHUB_SHA" > web/version.txt
+          sed -i "s/__BUILD__/$GITHUB_SHA/" web/index.html
       - uses: actions/upload-pages-artifact@v3
         with: { path: web }
       - id: d
