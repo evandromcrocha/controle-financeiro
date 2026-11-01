@@ -349,6 +349,9 @@
   @media(max-width:920px){.msort{display:block}}
   select.catsel{width:auto;max-width:190px;border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;min-height:0}
   select.catsel:hover{filter:brightness(.95);box-shadow:0 0 0 1px currentColor}
+  .fld.erro label{color:var(--red)}
+  .fld.erro input,.fld.erro select,.fld.erro .compnav .iconbtn{border-color:var(--red)!important;box-shadow:0 0 0 2px var(--red-weak)}
+  .fld.req label::after{content:" *";color:var(--red)}
 </style>
 </head>
 <body>
@@ -898,9 +901,9 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
   const f={tipo:r.tipo||'DÉBITO',valor:r.valor!=null?String(r.valor):'',descricao:r.descricao||'',categoria:r.categoria||'',forma_pagamento:r.forma_pagamento||'',competencia:r.competencia||state.comp,parcelas_total:r.parcelas_total||1,parcela_num:r.parcela_num??'',data_pagamento:r.data_pagamento||'',data_transacao:r.data_transacao||(r.id?'':new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10))};
   const seg=el('div',{class:'seg',style:'width:100%;margin-top:14px'});
   const opt=[['DÉBITO','Saída','var(--red)'],['CRÉDITO','Entrada','var(--green)']];
-  opt.forEach(([k,l,c])=>seg.append(el('button',{style:'flex:1'+(f.tipo===k?`;background:${c};color:#fff`:''),class:f.tipo===k?'on':'',onclick:e=>{f.tipo=k;[...seg.children].forEach((x,i)=>{const on=opt[i][0]===f.tipo;x.className=on?'on':'';x.style.cssText='flex:1'+(on?`;background:${opt[i][2]};color:#fff`:'');});}},l)));
+  opt.forEach(([k,l,c])=>seg.append(el('button',{style:'flex:1'+(f.tipo===k?`;background:${c};color:#fff`:''),class:f.tipo===k?'on':'',onclick:e=>{f.tipo=k;marcaReq();[...seg.children].forEach((x,i)=>{const on=opt[i][0]===f.tipo;x.className=on?'on':'';x.style.cssText='flex:1'+(on?`;background:${opt[i][2]};color:#fff`:'');});}},l)));
   box.append(seg);
-  const fld=(lab,node,cls)=>el('div',{class:'fld'+(cls?' '+cls:'')},el('label',{},lab),node);
+  const fld=(lab,node,cls)=>el('div',{class:'fld'+(cls?' '+cls:''),'data-lab':lab},el('label',{},lab),node);
   const grid=el('div',{class:'fgrid'});box.append(grid);
   const valIn=el('input',{type:'number',inputmode:'decimal',step:'0.01',value:f.valor,oninput:e=>{f.valor=e.target.value;info();},placeholder:'0,00'});
   grid.append(fld('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value,placeholder:'Ex: Mercado'}),'full'),fld('Valor (R$)',valIn),
@@ -945,9 +948,20 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
     grid.append(fld('Parcelas',el('div',{},chips),'full'));marcar();
   }
   grid.append(el('div',{class:'full'},pinfo));info();
+  function marcaReq(){const todos=['Descrição','Valor (R$)','Data da compra','Categoria','Cartão / conta','Competência','Vencimento'],base=['Descrição','Valor (R$)','Competência'];
+    grid.querySelectorAll('.fld').forEach(x=>x.classList.toggle('req',(f.tipo==='DÉBITO'?todos:base).includes(x.dataset.lab)));}
+  marcaReq();
+  grid.addEventListener('change',e=>e.target.closest('.fld')?.classList.remove('erro'));grid.addEventListener('input',e=>e.target.closest('.fld')?.classList.remove('erro'));
   const acts=el('div',{class:'mfoot'});
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
-    if(!f.descricao.trim())return toast('Informe a descrição.');if(!v)return toast('Informe o valor.');if(!/^\d{2}\/\d{4}$/.test(f.competencia))return toast('Competência MM/AAAA.');
+    // despesa: todos os campos obrigatórios; entrada: descrição, valor e competência
+    box.querySelectorAll('.fld.erro').forEach(x=>x.classList.remove('erro'));
+    const dataOk=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
+    const req=[['Descrição',!!f.descricao.trim()],['Valor (R$)',v>0],['Competência',/^\d{2}\/\d{4}$/.test(f.competencia)]];
+    if(f.tipo==='DÉBITO')req.push(['Data da compra',dataOk(f.data_transacao)],['Categoria',!!f.categoria],['Cartão / conta',!!f.forma_pagamento],['Vencimento',dataOk(f.data_pagamento)]);
+    const faltam=req.filter(([,ok])=>!ok).map(([n])=>n);
+    if(faltam.length){box.querySelectorAll('.fld').forEach(x=>{if(faltam.includes(x.querySelector('label')?.textContent))x.classList.add('erro');});
+      return toast('Preencha: '+faltam.join(', ')+'.');}
     const payload={descricao:f.descricao.trim(),valor:v,tipo:f.tipo,valor_final:f.tipo==='CRÉDITO'?v:-v,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento||null,parcelas_total:+f.parcelas_total||1,parcela_num:f.parcela_num?+f.parcela_num:null,competencia:f.competencia,competencia_ref:compRef(f.competencia),data_pagamento:/^\d{4}-\d{2}-\d{2}$/.test(f.data_pagamento)?f.data_pagamento:null,data_transacao:/^\d{4}-\d{2}-\d{2}$/.test(f.data_transacao)?f.data_transacao:null};
     let error;
     const tot=+f.parcelas_total||1;
