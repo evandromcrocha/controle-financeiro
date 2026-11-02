@@ -352,6 +352,33 @@
   .fld.erro label{color:var(--red)}
   .fld.erro input,.fld.erro select,.fld.erro .compnav .iconbtn{border-color:var(--red)!important;box-shadow:0 0 0 2px var(--red-weak)}
   .fld.req label::after{content:" *";color:var(--red)}
+  /* chat */
+  .chatfab{position:fixed;right:22px;bottom:22px;z-index:90;display:flex;align-items:center;gap:8px;border:none;border-radius:999px;padding:13px 18px;font-weight:700;font-size:14px;color:#fff;cursor:pointer;
+    background:linear-gradient(135deg,#c08457,#8a5a3b);box-shadow:0 10px 30px -10px rgba(80,50,20,.6)}
+  .chatfab .ico{stroke:#fff}
+  .chatpanel{position:fixed;right:22px;bottom:22px;z-index:110;width:420px;max-width:calc(100vw - 24px);height:min(640px,calc(100vh - 44px));display:flex;flex-direction:column;
+    background:var(--surface);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-lg);overflow:hidden;animation:pop .18s}
+  .chathead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+  .chathead .iconbtn{width:34px;height:34px}
+  .chatlog{flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  .chatsug{text-align:left;border:1px solid var(--border-strong);background:rgba(127,127,127,.06);color:var(--text);border-radius:12px;padding:9px 12px;font-size:13px;cursor:pointer}
+  .chatsug:hover{border-color:var(--primary)}
+  .msg{max-width:92%;padding:10px 13px;border-radius:16px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+  .msg.eu{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:5px;white-space:pre-wrap}
+  .msg.ia{align-self:flex-start;background:rgba(127,127,127,.09);border-bottom-left-radius:5px}
+  .msg.ia p{margin:0 0 6px}.msg.ia p:last-child{margin:0}.msg.ia ul,.msg.ia ol{margin:4px 0 6px;padding-left:20px}
+  .msg.ia table{min-width:0;font-size:12.5px;margin:6px 0}.msg.ia th,.msg.ia td{padding:5px 7px}.msg.ia th{position:static}
+  .chatin{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
+  .chatin textarea{flex:1;resize:none;font-family:inherit;font-size:15px;color:var(--text);background:rgba(127,127,127,.06);border:1px solid var(--border-strong);border-radius:12px;padding:10px 12px;max-height:120px}
+  .chatin .btn{min-height:44px}
+  .dots i{display:inline-block;width:6px;height:6px;margin-right:3px;border-radius:50%;background:var(--muted);animation:dot 1s infinite}
+  .dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+  @keyframes dot{50%{opacity:.25}}
+  @media(max-width:920px){
+    .chatfab{bottom:calc(92px + env(safe-area-inset-bottom));right:14px;padding:12px}
+    .chatfab span{display:none}
+    .chatpanel{inset:0;width:auto;max-width:none;height:auto;border-radius:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  }
 </style>
 </head>
 <body>
@@ -734,7 +761,9 @@ function renderLanc(v){
 function renderRel(v){
   const rows=state.rows;const pc=agrupa(rows,'categoria');const tot=pc.reduce((s,[,x])=>s+x,0);
   const mm=new Map();rows.forEach(r=>{const k=r.competencia_ref||'0';const cur=mm.get(k)||{comp:r.competencia,e:0,sa:0};r.tipo==='CRÉDITO'?cur.e+=Math.abs(r.valor):cur.sa+=Math.abs(r.valor);mm.set(k,cur);});
-  const meses=[...mm.entries()].sort((a,b)=>a[0]<b[0]?1:-1).slice(0,12).map(x=>x[1]).reverse();const mx=Math.max(1,...meses.map(m=>Math.max(m.e,m.sa)));
+  // 12 meses terminando no mês atual (projeções futuras não empurram o gráfico)
+  const porComp=new Map([...mm.values()].map(m=>[m.comp,m]));
+  const meses=[];for(let d=-11;d<=0;d++){const c=shiftComp(nowComp(),d);meses.push(porComp.get(c)||{comp:c,e:0,sa:0});}const mx=Math.max(1,...meses.map(m=>Math.max(m.e,m.sa)));
   // grouped column chart
   const c1=el('div',{class:'card'},el('h2',{style:'margin-top:0'},'Evolução mensal'));
   const chart=el('div',{style:'display:flex;gap:10px;align-items:flex-end;height:200px;overflow-x:auto;padding-top:10px'});
@@ -1144,12 +1173,62 @@ function revisarImportacao(itens,cartao,comp){
     draw();return box;},'wide');
 }
 
+// ---------- chat com a IA ----------
+const MD=t=>{const esc=x=>x.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inl=x=>esc(x).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  const L=t.split('\n');let h='',i=0;
+  while(i<L.length){const l=L[i];
+    if(/^\s*\|/.test(l)&&i+1<L.length&&/^\s*\|?\s*:?-{2,}/.test(L[i+1])){const cel=x=>x.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      h+='<div class="tablewrap"><table><thead><tr>'+cel(l).map(c=>`<th>${inl(c)}</th>`).join('')+'</tr></thead><tbody>';i+=2;
+      while(i<L.length&&/^\s*\|/.test(L[i])){h+='<tr>'+cel(L[i]).map(c=>`<td>${inl(c)}</td>`).join('')+'</tr>';i++;}h+='</tbody></table></div>';continue;}
+    if(/^\s*[-*] /.test(l)){h+='<ul>';while(i<L.length&&/^\s*[-*] /.test(L[i])){h+='<li>'+inl(L[i].replace(/^\s*[-*] /,''))+'</li>';i++;}h+='</ul>';continue;}
+    if(/^\s*\d+\. /.test(l)){h+='<ol>';while(i<L.length&&/^\s*\d+\. /.test(L[i])){h+='<li>'+inl(L[i].replace(/^\s*\d+\. /,''))+'</li>';i++;}h+='</ol>';continue;}
+    if(/^#{1,4} /.test(l)){h+='<p><b>'+inl(l.replace(/^#+ /,''))+'</b></p>';i++;continue;}
+    if(l.trim())h+='<p>'+inl(l)+'</p>';i++;}
+  return h;};
+state.chat=[];
+function abrirChat(){
+  if($('#chatPanel')){$('#chatPanel').remove();return;}
+  const p=el('div',{id:'chatPanel',class:'chatpanel'});
+  const log=el('div',{class:'chatlog'});
+  const inp=el('textarea',{rows:1,placeholder:'Pergunte sobre seus gastos…',onkeydown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}}});
+  const btn=el('button',{class:'btn',title:'Enviar',onclick:()=>enviar()},'Enviar');
+  p.append(el('div',{class:'chathead'},el('div',{},el('b',{},'Pergunte aos seus dados'),el('div',{class:'muted',style:'font-size:12px'},'A IA consulta seus lançamentos para responder')),
+    el('div',{style:'display:flex;gap:6px'},el('button',{class:'iconbtn',title:'Nova conversa',onclick:()=>{state.chat=[];desenha();}},'↺'),el('button',{class:'iconbtn',title:'Fechar',onclick:()=>p.remove()},'✕'))),
+    log,el('div',{class:'chatin'},inp,btn));
+  document.body.append(p);
+  const SUG=['Quanto gastei este mês por categoria?','Quais foram meus 10 maiores gastos em outubro?','Compare meus gastos dos últimos 6 meses','Quanto gastei com ALIMENTAÇÃO este ano?','Qual cartão mais pesa na fatura deste mês?','Quais assinaturas recorrentes eu pago?'];
+  function desenha(pendente){log.innerHTML='';
+    const vis=state.chat.flatMap(m=>{if(m.role==='user'&&typeof m.content==='string')return[{u:1,t:m._exibir||m.content}];
+      if(m.role==='assistant'){const t=(m.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();return t?[{u:0,t}]:[];}return[];});
+    if(!vis.length){log.append(el('div',{class:'muted',style:'font-size:13px;margin-bottom:8px'},'Experimente:'));
+      SUG.forEach(q=>log.append(el('button',{class:'chatsug',onclick:()=>{inp.value=q;enviar();}},q)));}
+    vis.forEach(m=>log.append(el('div',{class:'msg '+(m.u?'eu':'ia'),...(m.u?{}:{html:MD(m.t)})},m.u?m.t:null)));
+    if(pendente)log.append(el('div',{class:'msg ia'},el('span',{class:'dots'},el('i'),el('i'),el('i')),' consultando seus dados…'));
+    log.scrollTop=log.scrollHeight;}
+  async function enviar(){const q=inp.value.trim();if(!q||btn.disabled)return;inp.value='';btn.disabled=true;
+    // contexto vai na 1ª mensagem da conversa (o histórico nunca é editado depois)
+    const ctx=!state.chat.length?`[Contexto: hoje é ${new Date().toLocaleDateString('pt-BR')}; mês atual ${nowComp()}; mês aberto no app ${state.comp}. Categorias: ${state.cats.map(c=>c.nome).join(', ')}. Cartões/contas: ${state.formas.map(f=>f.nome).join(', ')}.]\n\n`:'';
+    const antes=state.chat.slice();
+    state.chat.push({role:'user',content:ctx+q,_exibir:q});desenha(true);
+    try{const msgs=state.chat.map(({_exibir,...m})=>m);
+      const{data,error}=await supabase.functions.invoke('chat-financeiro',{body:{messages:msgs}});
+      if(error){let msg=error.message;try{const j=await error.context.json();if(j?.erro)msg=j.erro;}catch{}throw new Error(msg);}
+      if(!data?.ok)throw new Error(data?.erro||'Falha no chat.');
+      const velho=state.chat;state.chat=data.messages;
+      velho.forEach((m,i)=>{if(m._exibir&&state.chat[i])state.chat[i]._exibir=m._exibir;});
+    }catch(e){state.chat=antes;toast(e.message||String(e));inp.value=q;}
+    btn.disabled=false;desenha();inp.focus();}
+  desenha();setTimeout(()=>inp.focus(),50);
+}
+
 // auth
 $('#btnLogin').onclick=async()=>{$('#loginErr').textContent='';const{error}=await supabase.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#pass').value});if(error)$('#loginErr').textContent=error.message;};
 $('#pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#btnLogin').click();});
 $('#btnLogout').onclick=()=>supabase.auth.signOut();
-supabase.auth.onAuthStateChange((_e,session)=>{if(session){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}else{$('#app').classList.add('hidden');$('#login').classList.remove('hidden');}});
-supabase.auth.getSession().then(({data})=>{if(data.session){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}});
+function botaoChat(){if($('#chatFab'))return;document.body.append(el('button',{id:'chatFab',class:'chatfab',title:'Perguntar à IA',onclick:abrirChat},icon('sparkle'),el('span',{},'Perguntar')));}
+supabase.auth.onAuthStateChange((_e,session)=>{if(session){botaoChat();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}else{$('#app').classList.add('hidden');$('#login').classList.remove('hidden');$('#chatFab')?.remove();$('#chatPanel')?.remove();state.chat=[];}});
+supabase.auth.getSession().then(({data})=>{if(data.session){botaoChat();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}});
 </script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
 <script>
