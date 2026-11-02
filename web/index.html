@@ -575,23 +575,48 @@ async function renderProj(v){
   draw();
 }
 
-// alterar valor / apagar projeções de um item a partir de uma competência
+// alterar / apagar projeções de um item a partir de uma competência
 function editarProjecao(p,modo){modal(close=>{const box=el('div');const apagar=modo==='apagar';
+  const rows=()=>state.rows.filter(r=>r.projetado&&r.grupo===p.grupo&&ordC(r.competencia)>=ordC(comp));
+  const ex=state.rows.find(r=>r.projetado&&r.grupo===p.grupo)||{};
+  const f={tipo:p.tipo||'DÉBITO',descricao:p.descricao,valor:String(p.valor),categoria:p.categoria||'',forma_pagamento:p.forma_pagamento||'',assinatura:!!p.assinatura,
+    dia:ex.data_pagamento?+ex.data_pagamento.slice(8,10):(state.formas.find(x=>x.nome===p.forma_pagamento)?.dia_vencimento||'')};
   box.append(el('div',{class:'mhead'},el('h3',{},(apagar?'Apagar projeções · ':'Alterar projeções · ')+p.descricao),el('button',{class:'iconbtn',onclick:close,title:'Fechar'},'✕')));
-  box.append(el('div',{class:'muted',style:'font-size:13px'},`${p.qtd} projeção(ões) de ${p.primeira} a ${p.ultima} · ${p.forma_pagamento||''}. Lançamentos reais não são afetados.`));
-  let comp=p.primeira;const ct=el('span',{class:'cv'},compLabel(comp));
-  const nav=d=>{const c=shiftComp(comp,d);if(ordC(c)<ordC(p.primeira)||ordC(c)>ordC(p.ultima))return;comp=c;ct.textContent=compLabel(comp);};
-  const grid=el('div',{class:'fgrid'});box.append(grid);
-  grid.append(el('div',{class:'fld'},el('label',{},'A partir de'),el('div',{class:'compnav'},el('button',{type:'button',class:'iconbtn',onclick:()=>nav(-1)},'‹'),ct,el('button',{type:'button',class:'iconbtn',onclick:()=>nav(1)},'›'))));
-  const val=el('input',{type:'number',step:'0.01',inputmode:'decimal',value:p.valor});
-  if(!apagar)grid.append(el('div',{class:'fld'},el('label',{},'Novo valor (R$)'),val));
-  const go=el('button',{class:'btn'+(apagar?' red':''),style:'flex:1',onclick:async()=>{go.disabled=true;
-    const r=apagar?await supabase.rpc('excluir_projecoes',{grupo_filtro:p.grupo,a_partir:comp})
-      :await supabase.rpc('ajustar_projecoes',{grupo_filtro:p.grupo,novo_valor:parseFloat(String(val.value).replace(',','.')),a_partir:comp});
-    go.disabled=false;if(r.error)return toast(r.error.message);
-    toast(`${r.data||0} projeção(ões) ${apagar?'removida(s)':'atualizada(s)'}.`);close();await loadAll();render();}},apagar?'Apagar projeções':'Salvar');
+  const resumo=el('div',{class:'muted',style:'font-size:13px'});box.append(resumo);
+  let comp=p.primeira;const ct=el('span',{class:'cv'});
+  const upd=()=>{ct.textContent=compLabel(comp);resumo.textContent=`${rows().length} projeção(ões) de ${compLabel(comp)} a ${compLabel(p.ultima)}. Lançamentos reais não são afetados.`;};
+  const nav=d=>{const c=shiftComp(comp,d);if(ordC(c)<ordC(p.primeira)||ordC(c)>ordC(p.ultima))return;comp=c;upd();};
+  const fld=(lab,node,cls)=>el('div',{class:'fld'+(cls?' '+cls:'')},el('label',{},lab),node);
+  const grid=el('div',{class:'fgrid'});
+  if(!apagar){
+    const seg=el('div',{class:'seg',style:'width:100%;margin-top:10px'});const opt=[['DÉBITO','Saída','var(--red)'],['CRÉDITO','Entrada','var(--green)']];
+    const pinta=()=>[...seg.children].forEach((x,i)=>{const on=opt[i][0]===f.tipo;x.className=on?'on':'';x.style.cssText='flex:1'+(on?`;background:${opt[i][2]};color:#fff`:'');});
+    opt.forEach(([k,l])=>seg.append(el('button',{onclick:()=>{f.tipo=k;pinta();}},l)));pinta();box.append(seg);
+    const cat=el('select',{onchange:e=>f.categoria=e.target.value});cat.append(el('option',{value:''},'— sem categoria —'));state.cats.forEach(c=>cat.append(el('option',{value:c.nome,...(c.nome===f.categoria?{selected:1}:{})},c.nome)));
+    const fp=el('select',{onchange:e=>{f.forma_pagamento=e.target.value;const d=state.formas.find(x=>x.nome===f.forma_pagamento)?.dia_vencimento;if(d){f.dia=d;dia.value=d;}}});
+    state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
+    const dia=el('input',{type:'number',min:1,max:31,value:f.dia,oninput:e=>f.dia=e.target.value});
+    const tA=el('button',{type:'button',class:'tgl'+(f.assinatura?' on':''),onclick:()=>{f.assinatura=!f.assinatura;tA.classList.toggle('on',f.assinatura);}},'▶ Assinatura');
+    grid.append(fld('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value}),'full'),
+      fld('Valor (R$)',el('input',{type:'number',step:'0.01',inputmode:'decimal',value:f.valor,oninput:e=>f.valor=e.target.value})),
+      fld('Categoria',cat),fld('Cartão / conta',fp),fld('Dia de vencimento',dia),el('div',{class:'full tgls'},tA));
+  }
+  grid.prepend(fld('A partir de',el('div',{class:'compnav'},el('button',{type:'button',class:'iconbtn',onclick:()=>nav(-1)},'‹'),ct,el('button',{type:'button',class:'iconbtn',onclick:()=>nav(1)},'›'))));
+  box.append(grid);upd();
+  const go=el('button',{class:'btn'+(apagar?' red':''),style:'flex:1',onclick:async()=>{
+    let n=0,error=null;go.disabled=true;
+    if(apagar){const r=await supabase.rpc('excluir_projecoes',{grupo_filtro:p.grupo,a_partir:comp});error=r.error;n=r.data||0;}
+    else{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);const d=Math.min(31,Math.max(1,+f.dia||1));
+      if(!f.descricao.trim()||!v||!f.forma_pagamento){go.disabled=false;return toast('Preencha descrição, valor e cartão/conta.');}
+      const base={descricao:f.descricao.trim(),valor:v,valor_final:f.tipo==='CRÉDITO'?v:-v,tipo:f.tipo,categoria:f.categoria||null,forma_pagamento:f.forma_pagamento,
+        assinatura:f.assinatura,grupo:'REC:'+f.descricao.trim()+'|'+f.forma_pagamento};
+      const res=await Promise.all(rows().map(r=>{const[y,m]=r.competencia_ref.split('-').map(Number);const dim=new Date(y,m,0).getDate();
+        return supabase.from('lancamentos').update({...base,data_pagamento:`${y}-${String(m).padStart(2,'0')}-${String(Math.min(d,dim)).padStart(2,'0')}`}).eq('id',r.id);}));
+      error=res.find(r=>r.error)?.error;n=res.length;}
+    go.disabled=false;if(error)return toast(error.message);
+    toast(`${n} projeção(ões) ${apagar?'removida(s)':'atualizada(s)'}.`);close();await loadAll();render();}},apagar?'Apagar projeções':'Salvar');
   box.append(el('div',{class:'mfoot'},el('button',{class:'btn ghost',onclick:close},'Cancelar'),go));
-  return box;});}
+  return box;},modo==='apagar'?false:'lanc');}
 
 // donut svg
 function donut(data,total){
