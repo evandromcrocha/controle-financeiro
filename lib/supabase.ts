@@ -15,4 +15,5 @@ export const supabase = createClient(extra.supabaseUrl, extra.supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false,
   },
+  db: { schema: 'financeiro' },
 });
