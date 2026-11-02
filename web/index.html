@@ -949,16 +949,16 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
   }
   grid.append(el('div',{class:'full'},pinfo));info();
   function marcaReq(){const todos=['Descrição','Valor (R$)','Data da compra','Categoria','Cartão / conta','Competência','Vencimento'],base=['Descrição','Valor (R$)','Competência'];
-    grid.querySelectorAll('.fld').forEach(x=>x.classList.toggle('req',(f.tipo==='DÉBITO'?todos:base).includes(x.dataset.lab)));}
+    grid.querySelectorAll('.fld').forEach(x=>x.classList.toggle('req',todos.includes(x.dataset.lab)));}
   marcaReq();
   grid.addEventListener('change',e=>e.target.closest('.fld')?.classList.remove('erro'));grid.addEventListener('input',e=>e.target.closest('.fld')?.classList.remove('erro'));
   const acts=el('div',{class:'mfoot'});
   acts.append(el('button',{class:'btn',style:'flex:1',onclick:async()=>{const v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
-    // despesa: todos os campos obrigatórios; entrada: descrição, valor e competência
+    // todos os campos são obrigatórios (despesa e entrada)
     box.querySelectorAll('.fld.erro').forEach(x=>x.classList.remove('erro'));
     const dataOk=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
     const req=[['Descrição',!!f.descricao.trim()],['Valor (R$)',v>0],['Competência',/^\d{2}\/\d{4}$/.test(f.competencia)]];
-    if(f.tipo==='DÉBITO')req.push(['Data da compra',dataOk(f.data_transacao)],['Categoria',!!f.categoria],['Cartão / conta',!!f.forma_pagamento],['Vencimento',dataOk(f.data_pagamento)]);
+    req.push(['Data da compra',dataOk(f.data_transacao)],['Categoria',!!f.categoria],['Cartão / conta',!!f.forma_pagamento],['Vencimento',dataOk(f.data_pagamento)]);
     const faltam=req.filter(([,ok])=>!ok).map(([n])=>n);
     if(faltam.length){box.querySelectorAll('.fld').forEach(x=>{if(faltam.includes(x.querySelector('label')?.textContent))x.classList.add('erro');});
       return toast('Preencha: '+faltam.join(', ')+'.');}
