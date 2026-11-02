@@ -539,7 +539,7 @@ async function renderProj(v){
   sw.append(el('input',{placeholder:'Buscar projeção...',style:'padding-left:38px',oninput:e=>{q=e.target.value;draw();}}),
     el('span',{style:'position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)'},icon('search','ico sm')));
   const seg=el('div',{class:'seg'});const bs={};
-  [['todos','Todos'],['DÉBITO','Débitos'],['CRÉDITO','Créditos'],['ASS','Assinaturas']].forEach(([k,l])=>{
+  [['todos','Todos'],['DÉBITO','Débitos'],['CRÉDITO','Créditos'],['ASS','Assinaturas'],['REC','Recorrentes']].forEach(([k,l])=>{
     bs[k]=el('button',{class:k===ftipo?'on':'',onclick:()=>{ftipo=k;Object.entries(bs).forEach(([kk,b])=>b.className=kk===k?'on':'');draw();}},l);seg.append(bs[k]);});
   bar.append(sw,seg);v.append(bar);
   const box=el('div',{class:'card',style:'padding:6px'});v.append(box);
@@ -548,6 +548,7 @@ async function renderProj(v){
   function draw(){
     let list=itens;
     if(ftipo==='ASS')list=list.filter(g=>g.assinatura);
+    else if(ftipo==='REC')list=list.filter(g=>!g.assinatura);
     else if(ftipo!=='todos')list=list.filter(g=>(g.tipo==='CRÉDITO'?'CRÉDITO':'DÉBITO')===ftipo);
     if(q.trim()){const t=q.toLowerCase();list=list.filter(g=>((g.descricao||'')+' '+(g.forma_pagamento||'')+' '+(g.categoria||'')).toLowerCase().includes(t));}
     const st=state.sortProj,fn=SP[st.key]||SP.descricao,d=st.dir==='asc'?1:-1;
@@ -560,7 +561,7 @@ async function renderProj(v){
       itens.length?'Nenhuma projeção encontrada para esse filtro.':'Nenhuma projeção. Use "Gerar projeções" acima.')));
     list.forEach(p=>{const c=p.tipo==='CRÉDITO';
       tb.append(el('tr',{},
-        el('td',{},el('b',{},p.descricao),p.assinatura?el('div',{},el('span',{class:'chiptag tag-ass'},'▶ Assinatura')):null),
+        el('td',{},el('b',{},p.descricao),el('div',{},p.assinatura?el('span',{class:'chiptag tag-ass'},'▶ Assinatura'):el('span',{class:'chiptag tag-rec'},'🔁 Recorrente'))),
         el('td',{},el('span',{class:'chiptag',style:`background:${c?'var(--green-weak)':'var(--red-weak)'};color:${c?'var(--green)':'var(--red)'}`},c?'Crédito':'Débito')),
         el('td',{class:'muted'},p.forma_pagamento||'—'),
         el('td',{class:'muted',style:'white-space:nowrap'},`${p.primeira} → ${p.ultima}`),
@@ -596,10 +597,11 @@ function editarProjecao(p,modo){modal(close=>{const box=el('div');const apagar=m
     const fp=el('select',{onchange:e=>{f.forma_pagamento=e.target.value;const d=state.formas.find(x=>x.nome===f.forma_pagamento)?.dia_vencimento;if(d){f.dia=d;dia.value=d;}}});
     state.formas.forEach(x=>fp.append(el('option',{value:x.nome,...(x.nome===f.forma_pagamento?{selected:1}:{})},x.nome)));
     const dia=el('input',{type:'number',min:1,max:31,value:f.dia,oninput:e=>f.dia=e.target.value});
-    const tA=el('button',{type:'button',class:'tgl'+(f.assinatura?' on':''),onclick:()=>{f.assinatura=!f.assinatura;tA.classList.toggle('on',f.assinatura);}},'▶ Assinatura');
+    const tR=el('button',{type:'button',class:'tgl'+(f.assinatura?'':' on'),onclick:()=>{f.assinatura=false;tR.classList.add('on');tA.classList.remove('on');}},'🔁 Recorrente');
+    const tA=el('button',{type:'button',class:'tgl'+(f.assinatura?' on':''),onclick:()=>{f.assinatura=true;tA.classList.add('on');tR.classList.remove('on');}},'▶ Assinatura');
     grid.append(fld('Descrição',el('input',{value:f.descricao,oninput:e=>f.descricao=e.target.value}),'full'),
       fld('Valor (R$)',el('input',{type:'number',step:'0.01',inputmode:'decimal',value:f.valor,oninput:e=>f.valor=e.target.value})),
-      fld('Categoria',cat),fld('Cartão / conta',fp),fld('Dia de vencimento',dia),el('div',{class:'full tgls'},tA));
+      fld('Categoria',cat),fld('Cartão / conta',fp),fld('Dia de vencimento',dia),el('div',{class:'full tgls'},tR,tA));
   }
   grid.prepend(fld('A partir de',el('div',{class:'compnav'},el('button',{type:'button',class:'iconbtn',onclick:()=>nav(-1)},'‹'),ct,el('button',{type:'button',class:'iconbtn',onclick:()=>nav(1)},'›'))));
   box.append(grid);upd();
@@ -771,7 +773,7 @@ function renderLanc(v){
   bar.append(sw,seg,add);v.append(bar);
   const wrap=el('div',{class:'card',style:'padding:6px 6px'});v.append(wrap);
   function draw(){
-    let list=doMes();if(filtro==='pendentes')list=list.filter(isPend);else if(filtro==='ass')list=list.filter(r=>r.assinatura);else if(filtro==='rec')list=list.filter(r=>r.recorrente);
+    let list=doMes();if(filtro==='pendentes')list=list.filter(isPend);else if(filtro==='ass')list=list.filter(r=>r.assinatura);else if(filtro==='rec')list=list.filter(r=>r.recorrente&&!r.assinatura);
     if(q.trim())list=list.filter(r=>(r.descricao+r.categoria+r.forma_pagamento).toLowerCase().includes(q.toLowerCase()));
     const pc=doMes().filter(isPend).length;bseg.pendentes.textContent='Pendentes'+(pc?` (${pc})`:'');
     wrap.innerHTML='';const tw=el('div',{class:'tablewrap'});const t=el('table');
@@ -1012,10 +1014,13 @@ function openLanc(r={}){modal(close=>{const box=el('div');box.append(el('div',{c
     const w=el('div',{class:'stepper'},el('button',{type:'button',class:'iconbtn',onclick:()=>{set(Math.max(min,(+get()||min)-1));upd();info();}},'−'),out,
       el('button',{type:'button',class:'iconbtn',onclick:()=>{set(Math.min(max(),(+get()||min)+1));upd();info();}},'+'));upd();return w;};
   // recorrente / assinatura (assinatura é sempre recorrente e à vista)
-  const tgl=(lab,k,dica)=>{const b=el('button',{type:'button',class:'tgl',title:dica,onclick:()=>{f[k]=!f[k];if(k==='assinatura'&&f.assinatura)f.recorrente=true;if(k==='recorrente'&&!f.recorrente)f.assinatura=false;
+  // tipo de repetição: nenhum, recorrente ou assinatura (exclusivos; assinatura também repete todo mês)
+  const tipoRep=()=>f.assinatura?'assinatura':f.recorrente?'recorrente':'';
+  const tgl=(lab,k,dica)=>{const b=el('button',{type:'button',class:'tgl',title:dica,onclick:()=>{const novo=tipoRep()===k?'':k;
+      f.assinatura=novo==='assinatura';f.recorrente=!!novo;
       if(f.recorrente){f.parcelas_total=1;box.querySelectorAll('.pchips [data-n="1"]').forEach(x=>x.click());}updT();}},lab);b.dataset.k=k;return b;};
   const tRec=tgl('🔁 Recorrente','recorrente','Repete todo mês'),tAss=tgl('▶ Assinatura','assinatura','Serviço por assinatura (streaming, apps, seguros…)');
-  const updT=()=>{tRec.classList.toggle('on',f.recorrente);tAss.classList.toggle('on',f.assinatura);box.querySelectorAll('.fld[data-lab="Parcelas"],.fld[data-lab="Parcela nº"],.fld[data-lab="Total de parcelas"]').forEach(x=>x.classList.toggle('hidden',f.recorrente));};
+  const updT=()=>{tRec.classList.toggle('on',tipoRep()==='recorrente');tAss.classList.toggle('on',tipoRep()==='assinatura');box.querySelectorAll('.fld[data-lab="Parcelas"],.fld[data-lab="Parcela nº"],.fld[data-lab="Total de parcelas"]').forEach(x=>x.classList.toggle('hidden',f.recorrente));};
   grid.append(el('div',{class:'full tgls'},tRec,tAss));
   const pinfo=el('div',{class:'hint'});
   const info=()=>{const t=+f.parcelas_total||1,v=Math.abs(parseFloat(String(f.valor).replace(',','.'))||0);
