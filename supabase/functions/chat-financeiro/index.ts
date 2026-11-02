@@ -15,7 +15,7 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-haiku-5-5";
 const MAX_PASSOS = 8;
 
 // system e tools ficam fixos durante toda a conversa (não incluir nada variável aqui)
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     if (!apiKey) return json({ ok: false, erro: "Chave de IA não configurada no servidor (ANTHROPIC_API_KEY)." }, 500);
 
     const body = await req.json();
-    const messages: Anthropic.Beta.BetaMessageParam[] = Array.isArray(body.messages) ? body.messages : [];
+    const messages: Anthropic.MessageParam[] = Array.isArray(body.messages) ? body.messages : [];
     if (!messages.length || messages[messages.length - 1].role !== "user") {
       return json({ ok: false, erro: "Mensagem vazia." }, 400);
     }
@@ -169,16 +169,14 @@ Deno.serve(async (req) => {
     const client = new Anthropic({ apiKey });
     for (let passo = 0; passo < MAX_PASSOS; passo++) {
       // deno-lint-ignore no-explicit-any
-      const resp: any = await client.beta.messages.create({
+      const resp: any = await client.messages.create({
         model: MODEL,
         max_tokens: 16000,
         system: SYSTEM,
         tools: TOOLS,
         messages,
-        thinking: { type: "adaptive", block_binding: { prefix_mismatch_behavior: "drop_block" } },
-        output_config: { effort: "medium" },
-        fallbacks: "default",
-        betas: ["server-side-fallback-2026-07-01", "thinking-binding-controls-2026-08-01"],
+        thinking: { type: "adaptive" },
+        output_config: { effort: "low" },
       // deno-lint-ignore no-explicit-any
       } as any);
 

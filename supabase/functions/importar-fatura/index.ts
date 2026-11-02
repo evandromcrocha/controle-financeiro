@@ -71,8 +71,9 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 8000,
+        model: "claude-haiku-5-5",
+        max_tokens: 16000,
+        output_config: { effort: "low" },
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -81,7 +82,8 @@ Deno.serve(async (req) => {
       return json({ ok: false, erro: "Falha na IA: " + t.slice(0, 300) }, 502);
     }
     const aiData = await aiResp.json();
-    let raw = aiData?.content?.[0]?.text ?? "";
+    // a resposta pode trazer blocos de raciocínio antes do texto
+    let raw = (aiData?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("") ?? "";
     raw = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     let parsed: any;
     try { parsed = JSON.parse(raw); } catch { return json({ ok: false, erro: "IA retornou formato inesperado." }, 502); }
