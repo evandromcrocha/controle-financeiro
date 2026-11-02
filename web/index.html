@@ -387,6 +387,7 @@
   .chiptag.tag-rec{background:var(--primary-weak);color:var(--primary)}
   @media(max-width:920px){#view .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}#view .seg::-webkit-scrollbar{display:none}#view .seg button{flex:none;white-space:nowrap}}
   @media(max-width:920px){.row{gap:10px}.row>.stat{min-width:0;flex:1 1 calc(50% - 5px)}.stat .val{font-size:18px;overflow-wrap:anywhere}#projAte{width:120px!important}}
+  .chiptag.tag-ass.off{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--border-strong)}
 </style>
 </head>
 <body>
@@ -499,10 +500,11 @@ async function renderProj(v){
     el('h2',{style:'margin-top:0'},'O que são projeções'),
     el('div',{class:'muted',style:'margin-bottom:14px'},'Meses futuros dos seus lançamentos recorrentes (assinaturas, seguros, salário). Compras parceladas não aparecem aqui: elas já são criadas em todos os meses no momento do lançamento. Gerar, alterar ou apagar projeções não afeta os lançamentos reais.'));
   const ctl=el('div',{style:'display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end'});
-  const cw=el('div',{},el('label',{style:'margin-top:0'},'Projetar recorrentes até'),el('input',{id:'projAte',value:'12/2027',placeholder:'MM/AAAA',style:'width:150px'}));
+  const cw=el('div',{},el('label',{style:'margin-top:0'},'Projetar recorrentes até'),el('input',{id:'projAte',value:(()=>{try{return localStorage.getItem('cf-projate')||'12/2027';}catch{return '12/2027';}})(),placeholder:'MM/AAAA',style:'width:150px'}));
   ctl.append(cw,
     el('button',{class:'btn',onclick:async(ev)=>{const b=ev.currentTarget;const ate=$('#projAte').value.trim();
       b.disabled=true;b.textContent='Gerando...';
+      try{localStorage.setItem('cf-projate',ate);}catch{}
       const{data,error}=await supabase.rpc('projetar_recorrentes',{ate});
       b.disabled=false;b.textContent='Gerar projeções';
       if(error)return toast(error.message);toast(`${data||0} projeção(ões) criada(s) até ${ate}.`);await loadAll();render();}},'Gerar projeções'),
@@ -1078,9 +1080,13 @@ async function aplicarNaRecorrencia(r,p){
   let{error}=await base().eq('projetado',false).update(campos);if(error)return error;
   ({error}=await base().eq('projetado',true).update({...campos,grupo:'REC:'+p.descricao+'|'+(p.forma_pagamento||'')}));return error;}
 // gera projeções do novo recorrente até o mesmo horizonte das existentes
-async function projetarAteHorizonte(){const proj=state.rows.filter(x=>x.projetado&&x.competencia).map(x=>x.competencia);
-  const ate=proj.length?proj.reduce((a,b)=>ordC(a)>ordC(b)?a:b):shiftComp(nowComp(),3);
-  await supabase.rpc('projetar_recorrentes',{ate});}
+// horizonte = mês mais distante entre: projeções existentes, último "Gerar projeções" usado e 12 meses à frente
+async function projetarAteHorizonte(){const cands=state.rows.filter(x=>x.projetado&&x.competencia).map(x=>x.competencia);
+  try{const u=localStorage.getItem('cf-projate');if(/^\d{2}\/\d{4}$/.test(u||''))cands.push(u);}catch{}
+  cands.push(shiftComp(nowComp(),11));
+  const ate=cands.reduce((a,b)=>ordC(a)>ordC(b)?a:b);
+  const{data,error}=await supabase.rpc('projetar_recorrentes',{ate});
+  if(error)toast(error.message);else if(data)toast(`${data} projeção(ões) gerada(s) até ${compLabel(ate)}.`);}
 
 function openCard(r={}){modal(close=>{const box=el('div');box.append(el('h3',{},r.id?'Editar cartão/conta':'Novo cartão/conta'));
   const f={nome:r.nome||'',tipo:r.tipo||'CARTAO',dia_vencimento:r.dia_vencimento||''};
@@ -1182,12 +1188,12 @@ function revisarImportacao(itens,cartao,comp){
   // assinatura conhecida: mesma cobrança já marcada como assinatura neste cartão
   const assin=state.rows.filter(r=>r.assinatura&&r.forma_pagamento===cartao);
   L.forEach(x=>{x.assinatura=x.tipo==='DÉBITO'&&(!!x.dup?.assinatura||assin.some(r=>simil(r.descricao,x.descricao)>=0.5));});
-  L.forEach(x=>{x.categoria=x.dup?.categoria||sugerirCategoria(x.descricao)||'';x.status=x.dup?'dup':x.tipo==='CRÉDITO'?'cred':'novo';x.sel=x.status==='novo';});
+  L.forEach(x=>{x.categoria=x.dup?.categoria||sugerirCategoria(x.descricao)||'';x.status=x.dup?(x.dup.projetado?'proj':'dup'):x.tipo==='CRÉDITO'?'cred':'novo';x.sel=x.status==='novo'||x.status==='proj';});
   modal(close=>{const box=el('div');
-    const cnt={novo:0,dup:0,cred:0};L.forEach(x=>cnt[x.status]++);
+    const cnt={novo:0,dup:0,cred:0,proj:0};L.forEach(x=>cnt[x.status]++);
     box.append(el('div',{class:'mhead'},el('div',{},el('h3',{},'Revisar importação'),el('div',{class:'muted',style:'font-size:13px'},`${cartao} · ${compLabel(comp)} · ${L.length} linha(s) lidas`)),el('button',{class:'iconbtn',onclick:close,title:'Fechar'},'✕')));
     let filtro='todos';const seg=el('div',{class:'seg',style:'margin-top:10px;flex-wrap:wrap'});
-    [['todos','Todos ('+L.length+')'],['novo','Novos ('+cnt.novo+')'],['dup','Já lançados ('+cnt.dup+')'],['cred','Créditos/estornos ('+cnt.cred+')']].forEach(([k,t])=>seg.append(el('button',{class:k===filtro?'on':'',onclick:ev=>{filtro=k;[...seg.children].forEach(b=>b.classList.remove('on'));ev.currentTarget.classList.add('on');draw();}},t)));
+    [['todos','Todos ('+L.length+')'],['novo','Novos ('+cnt.novo+')'],['proj','Confirma projeção ('+cnt.proj+')'],['dup','Já lançados ('+cnt.dup+')'],['cred','Créditos/estornos ('+cnt.cred+')']].forEach(([k,t])=>seg.append(el('button',{class:k===filtro?'on':'',onclick:ev=>{filtro=k;[...seg.children].forEach(b=>b.classList.remove('on'));ev.currentTarget.classList.add('on');draw();}},t)));
     const bulk=el('select',{style:'width:auto;min-width:200px'});bulk.append(el('option',{value:''},'Aplicar categoria aos marcados…'));state.cats.forEach(c=>bulk.append(el('option',{value:c.nome},c.nome)));
     bulk.onchange=()=>{if(!bulk.value)return;L.forEach(x=>{if(x.sel)x.categoria=bulk.value;});bulk.value='';draw();};
     const sortR={key:'data',dir:'desc'};
@@ -1198,7 +1204,7 @@ function revisarImportacao(itens,cartao,comp){
     const foot=el('div',{class:'mfoot'});const resumo=el('div',{class:'muted',style:'font-size:13px;flex:1;align-self:center'});
     const go=el('button',{class:'btn',onclick:salvar},'Importar selecionados');
     foot.append(resumo,el('button',{class:'btn ghost',onclick:close},'Cancelar'),go);box.append(foot);
-    const TAG={novo:['Novo','var(--green-weak)','var(--green)'],dup:['Já lançado','var(--surface-2)','var(--muted)'],cred:['Crédito/estorno','var(--amber-weak)','var(--amber)']};
+    const TAG={proj:['Confirma projeção','var(--primary-weak)','var(--primary)'],novo:['Novo','var(--green-weak)','var(--green)'],dup:['Já lançado','var(--surface-2)','var(--muted)'],cred:['Crédito/estorno','var(--amber-weak)','var(--amber)']};
     function atualiza(){const s=L.filter(x=>x.sel);const tot=s.reduce((a,x)=>a+(x.tipo==='CRÉDITO'?-x.valor:x.valor),0);
       resumo.textContent=`${s.length} selecionado(s) · ${brl(tot)}`+(s.some(x=>!x.categoria)?` · ${s.filter(x=>!x.categoria).length} sem categoria`:'');go.disabled=!s.length;}
     function draw(){wrap.innerHTML='';const t=el('table');
@@ -1217,7 +1223,7 @@ function revisarImportacao(itens,cartao,comp){
           el('td',{},el('div',{style:'font-weight:600'},x.descricao,el('span',{class:'mdate muted'},x.data?' · '+x.data.split('-').reverse().slice(0,2).join('/'):'')),el('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:3px'},
             el('span',{class:'chiptag',style:`background:${bg};color:${fg};padding:2px 8px;font-size:11px`},tg),
             x.parcela_total>1?el('span',{class:'chiptag',style:'background:var(--primary-weak);color:var(--primary);padding:2px 8px;font-size:11px'},`Parcela ${x.parcela_atual}/${x.parcela_total}`):null,
-            x.assinatura?el('span',{class:'chiptag tag-ass',style:'margin:0'},'▶ Assinatura'):null,
+            x.tipo==='DÉBITO'?el('button',{type:'button',class:'chiptag tag-ass'+(x.assinatura?'':' off'),style:'margin:0;border:none;cursor:pointer',title:'Marcar/desmarcar como assinatura recorrente',onclick:()=>{x.assinatura=!x.assinatura;draw();}},x.assinatura?'▶ Assinatura':'＋ Assinatura'):null,
             x.dup?el('span',{class:'muted',style:'font-size:11px'},`igual a "${x.dup.descricao}" de ${(x.dup.data_transacao||x.dup.data_pagamento||'').split('-').reverse().join('/')}`):null)),
           el('td',{},cs),
           el('td',{class:'amt',style:`color:${x.tipo==='CRÉDITO'?'var(--green)':'var(--red)'}`},(x.tipo==='CRÉDITO'?'+ ':'− ')+brl(x.valor))));});
@@ -1225,17 +1231,22 @@ function revisarImportacao(itens,cartao,comp){
       t.append(tb);wrap.append(t);all.checked=vis().length&&vis().every(x=>x.sel);atualiza();}
     async function salvar(){const s=L.filter(x=>x.sel);if(!s.length)return;go.disabled=true;go.textContent='Importando...';
       const linhas=[];
-      s.forEach(x=>{const base={descricao:x.descricao.slice(0,200),valor:x.valor,tipo:x.tipo,valor_final:x.tipo==='CRÉDITO'?x.valor:-x.valor,categoria:x.categoria||null,forma_pagamento:cartao,data_transacao:x.parcela_atual>1?null:(x.data||null),projetado:false,assinatura:x.assinatura,recorrente:x.assinatura};
+      s.filter(x=>x.status!=='proj').forEach(x=>{const base={descricao:x.descricao.slice(0,200),valor:x.valor,tipo:x.tipo,valor_final:x.tipo==='CRÉDITO'?x.valor:-x.valor,categoria:x.categoria||null,forma_pagamento:cartao,data_transacao:x.parcela_atual>1?null:(x.data||null),projetado:false,assinatura:x.assinatura,recorrente:x.assinatura};
         if(x.parcela_total>1){const grupo='PARC:'+crypto.randomUUID();
           for(let n=x.parcela_atual,k=0;n<=x.parcela_total;n++,k++){const c=shiftComp(comp,k);let dp=null;if(venc){const b=new Date(venc+'T12:00:00');b.setMonth(b.getMonth()+k);dp=b.toISOString().slice(0,10);}
             // parcelas futuras já existentes não são recriadas
             if(k>0&&state.rows.some(r=>r.forma_pagamento===cartao&&r.competencia===c&&Math.abs(Math.abs(+r.valor)-x.valor)<=0.01&&simil(r.descricao,x.descricao)>=0.5))continue;
             linhas.push({...base,parcela_num:n,parcelas_total:x.parcela_total,competencia:c,competencia_ref:compRef(c),data_pagamento:dp,grupo});}
         }else linhas.push({...base,parcelas_total:1,competencia:comp,competencia_ref:compRef(comp),data_pagamento:venc});});
-      const{error}=await supabase.from('lancamentos').insert(linhas);
+      // projeções confirmadas pela fatura viram lançamentos reais (sem duplicar)
+      for(const x of s.filter(x=>x.status==='proj')){const{error}=await supabase.from('lancamentos').update({projetado:false,valor:x.valor,valor_final:x.tipo==='CRÉDITO'?x.valor:-x.valor,
+          data_transacao:x.data||null,categoria:x.categoria||x.dup.categoria||null}).eq('id',x.dup.id);
+        if(error){go.disabled=false;go.textContent='Importar selecionados';return toast(error.message);}}
+      const{error}=linhas.length?await supabase.from('lancamentos').insert(linhas):{error:null};
       if(error){go.disabled=false;go.textContent='Importar selecionados';return toast(error.message);}
       try{localStorage.setItem('cf-lastcomp',comp);}catch{}
-      close();toast(`✅ ${s.length} item(ns) importado(s)`+(linhas.length>s.length?` (${linhas.length} lançamentos com parcelas futuras)`:'')+'.');await loadAll();}
+      close();toast(`✅ ${s.length} item(ns) importado(s)`+(linhas.length>s.length?` (${linhas.length} lançamentos com parcelas futuras)`:'')+'.');await loadAll();
+      if(s.some(x=>x.assinatura)){await projetarAteHorizonte();await loadAll();}}
     draw();return box;},'wide');
 }
 
