@@ -385,6 +385,8 @@
   .chiptag.tag-ass,.chiptag.tag-rec{margin:3px 5px 0 0;padding:2px 8px;font-size:11px}
   .chiptag.tag-ass{background:#7c3aed1f;color:#7c3aed}
   .chiptag.tag-rec{background:var(--primary-weak);color:var(--primary)}
+  @media(max-width:920px){#view .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}#view .seg::-webkit-scrollbar{display:none}#view .seg button{flex:none;white-space:nowrap}}
+  @media(max-width:920px){.row{gap:10px}.row>.stat{min-width:0;flex:1 1 calc(50% - 5px)}.stat .val{font-size:18px;overflow-wrap:anywhere}#projAte{width:120px!important}}
 </style>
 </head>
 <body>
@@ -435,7 +437,7 @@ const SUPABASE_KEY='sb_publishable_Sbs85eyq_D4oKbJ4-LDE6g_aWV-KE3S';
 const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{db:{schema:'financeiro'}});
 
 const $=s=>document.querySelector(s);
-const el=(t,p={},...ch)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(p)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!=null)e.setAttribute(k,v);}for(const c of ch.flat())if(c!=null)e.append(c.nodeType?c:document.createTextNode(c));return e;};
+const el=(t,p={},...ch)=>{const e=document.createElement(t);for(const[k,v]of Object.entries(p)){if(k==='class')e.className=v;else if(k==='html')e.innerHTML=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(k,v===true?'':v);}for(const c of ch.flat())if(c!=null)e.append(c.nodeType?c:document.createTextNode(c));return e;};
 const NS='http://www.w3.org/2000/svg';
 const ICON={home:['M3 11l9-8 9 8','M5 21V11h14v10'],list:['M8 6h13','M8 12h13','M8 18h13','M3 6h.01','M3 12h.01','M3 18h.01'],chart:['M3 3v18h18','M18 9l-5 5-3-3-4 4'],gear:['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z'],plus:['M12 5v14','M5 12h14'],search:['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z','M21 21l-4.3-4.3'],doc:['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z','M14 2v6h6'],sparkle:['M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z'],trash:['M3 6h18','M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6','M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'],up:['M12 19V5','M5 12l7-7 7 7'],down:['M12 5v14','M5 12l7 7 7-7'],moon:['M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z'],sun:['M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M12 1v2','M12 21v2','M4.2 4.2l1.4 1.4','M18.4 18.4l1.4 1.4','M1 12h2','M21 12h2','M4.2 19.8l1.4-1.4','M18.4 5.6l1.4-1.4'],wallet:['M21 12V7H5a2 2 0 0 1 0-4h14v4','M3 5v14a2 2 0 0 0 2 2h16v-5','M18 12a2 2 0 0 0 0 4h4v-4z'],tag:['M20.6 13.4L12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z','M7 7h.01']};
 function icon(name,cls='ico'){const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('class',cls);(ICON[name]||[]).forEach(d=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);s.append(p);});return s;}
@@ -513,7 +515,7 @@ async function renderProj(v){
   const proj=state.rows.filter(r=>r.projetado);
   const gm=new Map();
   proj.forEach(r=>{const k=r.grupo||(r.descricao+'|'+(r.forma_pagamento||''));
-    const g=gm.get(k)||{grupo:r.grupo,descricao:r.descricao,forma_pagamento:r.forma_pagamento,tipo:r.tipo,categoria:r.categoria,qtd:0,valor:0,total:0,ini:r.competencia_ref,fim:r.competencia_ref,primeira:r.competencia,ultima:r.competencia};
+    const g=gm.get(k)||{assinatura:!!r.assinatura,grupo:r.grupo,descricao:r.descricao,forma_pagamento:r.forma_pagamento,tipo:r.tipo,categoria:r.categoria,qtd:0,valor:0,total:0,ini:r.competencia_ref,fim:r.competencia_ref,primeira:r.competencia,ultima:r.competencia};
     g.qtd++;g.valor=Math.max(g.valor,Math.abs(+r.valor));g.total+=Math.abs(+r.valor);
     if(r.competencia_ref<g.ini){g.ini=r.competencia_ref;g.primeira=r.competencia;}
     if(r.competencia_ref>g.fim){g.fim=r.competencia_ref;g.ultima=r.competencia;}
@@ -535,7 +537,7 @@ async function renderProj(v){
   sw.append(el('input',{placeholder:'Buscar projeção...',style:'padding-left:38px',oninput:e=>{q=e.target.value;draw();}}),
     el('span',{style:'position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)'},icon('search','ico sm')));
   const seg=el('div',{class:'seg'});const bs={};
-  [['todos','Todos'],['DÉBITO','Débitos'],['CRÉDITO','Créditos']].forEach(([k,l])=>{
+  [['todos','Todos'],['DÉBITO','Débitos'],['CRÉDITO','Créditos'],['ASS','Assinaturas']].forEach(([k,l])=>{
     bs[k]=el('button',{class:k===ftipo?'on':'',onclick:()=>{ftipo=k;Object.entries(bs).forEach(([kk,b])=>b.className=kk===k?'on':'');draw();}},l);seg.append(bs[k]);});
   bar.append(sw,seg);v.append(bar);
   const box=el('div',{class:'card',style:'padding:6px'});v.append(box);
@@ -543,7 +545,8 @@ async function renderProj(v){
   const SP={descricao:g=>(g.descricao||'').toLowerCase(),tipo:g=>g.tipo,forma_pagamento:g=>(g.forma_pagamento||'').toLowerCase(),periodo:g=>g.ini,qtd:g=>g.qtd,valor:g=>g.valor};
   function draw(){
     let list=itens;
-    if(ftipo!=='todos')list=list.filter(g=>(g.tipo==='CRÉDITO'?'CRÉDITO':'DÉBITO')===ftipo);
+    if(ftipo==='ASS')list=list.filter(g=>g.assinatura);
+    else if(ftipo!=='todos')list=list.filter(g=>(g.tipo==='CRÉDITO'?'CRÉDITO':'DÉBITO')===ftipo);
     if(q.trim()){const t=q.toLowerCase();list=list.filter(g=>((g.descricao||'')+' '+(g.forma_pagamento||'')+' '+(g.categoria||'')).toLowerCase().includes(t));}
     const st=state.sortProj,fn=SP[st.key]||SP.descricao,d=st.dir==='asc'?1:-1;
     list=[...list].sort((a,b)=>{const x=fn(a),y=fn(b);return x<y?-d:x>y?d:0;});
@@ -555,25 +558,38 @@ async function renderProj(v){
       itens.length?'Nenhuma projeção encontrada para esse filtro.':'Nenhuma projeção. Use "Gerar projeções" acima.')));
     list.forEach(p=>{const c=p.tipo==='CRÉDITO';
       tb.append(el('tr',{},
-        el('td',{},el('b',{},p.descricao)),
+        el('td',{},el('b',{},p.descricao),p.assinatura?el('div',{},el('span',{class:'chiptag tag-ass'},'▶ Assinatura')):null),
         el('td',{},el('span',{class:'chiptag',style:`background:${c?'var(--green-weak)':'var(--red-weak)'};color:${c?'var(--green)':'var(--red)'}`},c?'Crédito':'Débito')),
         el('td',{class:'muted'},p.forma_pagamento||'—'),
         el('td',{class:'muted',style:'white-space:nowrap'},`${p.primeira} → ${p.ultima}`),
         el('td',{},String(p.qtd)),
         el('td',{class:'amt',style:`color:${c?'var(--green)':'var(--red)'}`},brl(p.valor)),
         el('td',{},el('div',{style:'display:flex;gap:6px'},
-          el('button',{class:'btn ghost sm',disabled:!p.grupo,onclick:async()=>{const nv=prompt(`Novo valor para "${p.descricao}" (aplica nas projeções):`,String(p.valor));if(nv===null)return;
-            const ap=prompt('Aplicar a partir de qual competência? (MM/AAAA — vazio = todas)','');
-            const{data,error}=await supabase.rpc('ajustar_projecoes',{grupo_filtro:p.grupo,novo_valor:parseFloat(String(nv).replace(',','.')),a_partir:ap||null});
-            if(error)return toast(error.message);toast(`${data||0} projeção(ões) atualizada(s).`);await loadAll();render();}},'Alterar'),
-          el('button',{class:'btn ghost sm',disabled:!p.grupo,onclick:async()=>{if(!confirm(`Apagar as projeções de "${p.descricao}"?`))return;
-            const{data,error}=await supabase.rpc('excluir_projecoes',{grupo_filtro:p.grupo,a_partir:null});
-            if(error)return toast(error.message);toast(`${data||0} removida(s).`);await loadAll();render();}},'Apagar')))));
+          el('button',{class:'btn ghost sm',disabled:!p.grupo,onclick:()=>editarProjecao(p,'alterar')},'Alterar'),
+          el('button',{class:'btn ghost sm',disabled:!p.grupo,onclick:()=>editarProjecao(p,'apagar')},'Apagar')))));
     });
     t.append(tb);tw.append(t);box.append(tw);
   }
   draw();
 }
+
+// alterar valor / apagar projeções de um item a partir de uma competência
+function editarProjecao(p,modo){modal(close=>{const box=el('div');const apagar=modo==='apagar';
+  box.append(el('div',{class:'mhead'},el('h3',{},(apagar?'Apagar projeções · ':'Alterar projeções · ')+p.descricao),el('button',{class:'iconbtn',onclick:close,title:'Fechar'},'✕')));
+  box.append(el('div',{class:'muted',style:'font-size:13px'},`${p.qtd} projeção(ões) de ${p.primeira} a ${p.ultima} · ${p.forma_pagamento||''}. Lançamentos reais não são afetados.`));
+  let comp=p.primeira;const ct=el('span',{class:'cv'},compLabel(comp));
+  const nav=d=>{const c=shiftComp(comp,d);if(ordC(c)<ordC(p.primeira)||ordC(c)>ordC(p.ultima))return;comp=c;ct.textContent=compLabel(comp);};
+  const grid=el('div',{class:'fgrid'});box.append(grid);
+  grid.append(el('div',{class:'fld'},el('label',{},'A partir de'),el('div',{class:'compnav'},el('button',{type:'button',class:'iconbtn',onclick:()=>nav(-1)},'‹'),ct,el('button',{type:'button',class:'iconbtn',onclick:()=>nav(1)},'›'))));
+  const val=el('input',{type:'number',step:'0.01',inputmode:'decimal',value:p.valor});
+  if(!apagar)grid.append(el('div',{class:'fld'},el('label',{},'Novo valor (R$)'),val));
+  const go=el('button',{class:'btn'+(apagar?' red':''),style:'flex:1',onclick:async()=>{go.disabled=true;
+    const r=apagar?await supabase.rpc('excluir_projecoes',{grupo_filtro:p.grupo,a_partir:comp})
+      :await supabase.rpc('ajustar_projecoes',{grupo_filtro:p.grupo,novo_valor:parseFloat(String(val.value).replace(',','.')),a_partir:comp});
+    go.disabled=false;if(r.error)return toast(r.error.message);
+    toast(`${r.data||0} projeção(ões) ${apagar?'removida(s)':'atualizada(s)'}.`);close();await loadAll();render();}},apagar?'Apagar projeções':'Salvar');
+  box.append(el('div',{class:'mfoot'},el('button',{class:'btn ghost',onclick:close},'Cancelar'),go));
+  return box;});}
 
 // donut svg
 function donut(data,total){
@@ -723,19 +739,19 @@ function renderLanc(v){
   sw.append(inp,el('span',{style:'position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)'},icon('search','ico sm')));
   const seg=el('div',{class:'seg'});const bseg={};
   const bt=(k,l)=>el('button',{class:filtro===k?('on'+(k==='pendentes'?' amber':'')):'',onclick:()=>{filtro=state.lancFiltro=k;Object.entries(bseg).forEach(([kk,b])=>b.className=kk===k?('on'+(kk==='pendentes'?' amber':'')):'');draw();}},l);
-  bseg.todos=bt('todos','Todos');bseg.pendentes=bt('pendentes','Pendentes');seg.append(bseg.todos,bseg.pendentes);
+  bseg.todos=bt('todos','Todos');bseg.pendentes=bt('pendentes','Pendentes');bseg.ass=bt('ass','Assinaturas');bseg.rec=bt('rec','Recorrentes');seg.append(bseg.todos,bseg.pendentes,bseg.ass,bseg.rec);
   const add=el('button',{class:'btn',style:'margin-left:auto',onclick:()=>openLanc()},icon('plus','ico sm'),'Novo');
   bar.append(sw,seg,add);v.append(bar);
   const wrap=el('div',{class:'card',style:'padding:6px 6px'});v.append(wrap);
   function draw(){
-    let list=doMes();if(filtro==='pendentes')list=list.filter(isPend);
+    let list=doMes();if(filtro==='pendentes')list=list.filter(isPend);else if(filtro==='ass')list=list.filter(r=>r.assinatura);else if(filtro==='rec')list=list.filter(r=>r.recorrente);
     if(q.trim())list=list.filter(r=>(r.descricao+r.categoria+r.forma_pagamento).toLowerCase().includes(q.toLowerCase()));
     const pc=doMes().filter(isPend).length;bseg.pendentes.textContent='Pendentes'+(pc?` (${pc})`:'');
     wrap.innerHTML='';const tw=el('div',{class:'tablewrap'});const t=el('table');
     t.append(sortHeader([['descricao','Descrição'],['categoria','Categoria'],['forma_pagamento','Cartão/Conta'],['data_transacao','Compra'],['data_pagamento','Venc.'],['valor','Valor','amt']],state.sortLanc,k=>{toggleSort(state.sortLanc,k);draw();}));
     list=ordenar(list,state.sortLanc);
     const tb=el('tbody');
-    if(!list.length)tb.append(el('tr',{},el('td',{colspan:6,class:'muted',style:'text-align:center;padding:34px'},filtro==='pendentes'?'Nada pendente 🎉':'Nenhum lançamento.')));
+    if(!list.length)tb.append(el('tr',{},el('td',{colspan:6,class:'muted',style:'text-align:center;padding:34px'},filtro==='pendentes'?'Nada pendente 🎉':filtro==='ass'?'Nenhuma assinatura neste mês.':'Nenhum lançamento.')));
     list.forEach(r=>{const cred=r.tipo==='CRÉDITO';const pend=isPend(r);
       const av=el('span',{class:'avatar',style:`background:${(pend?'var(--amber)':colorFor(r.categoria))}1f;color:${pend?'var(--amber)':colorFor(r.categoria)}`},icon(pend?'sparkle':'tag','ico sm'));
       // categoria editável direto na tabela
