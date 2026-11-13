@@ -716,12 +716,15 @@ function seriesParceladas(rows){
 function cardFimParcelas(rows){
   const hoje=nowComp(),porMes=new Map();
   seriesParceladas(rows).filter(s=>ordC(s.fim)>=ordC(hoje)).forEach(s=>{const l=porMes.get(s.fim)||[];l.push(s);porMes.set(s.fim,l);});
+  // compras à vista (não parceladas e não recorrentes) acabam no próprio mês
+  rows.forEach(r=>{if(r.parcelas_total>1||r.recorrente||r.tipo==='CRÉDITO'||!r.competencia||ordC(r.competencia)<ordC(hoje))return;
+    const l=porMes.get(r.competencia)||[];l.push({descricao:r.descricao,forma_pagamento:r.forma_pagamento,categoria:r.categoria,valor:Math.abs(+r.valor),total:1,avista:true});porMes.set(r.competencia,l);});
   const meses=[...porMes.keys()].sort((a,b)=>ordC(a)-ordC(b));
   const c=el('div',{class:'card',style:'margin-top:16px'});
-  c.append(el('h2',{style:'margin:0 0 4px'},'Parcelas que terminam em cada mês'),
-    el('div',{class:'muted',style:'font-size:13px;margin-bottom:12px'},'Mês da última parcela de cada compra parcelada. O total do mês é quanto deixa de sair a partir do mês seguinte. A primeira linha mostra as saídas recorrentes do mês atual, que continuam. Clique em uma linha para ver os itens.'));
+  c.append(el('h2',{style:'margin:0 0 4px'},'O que acaba em cada mês'),
+    el('div',{class:'muted',style:'font-size:13px;margin-bottom:12px'},'Em cada mês: compras parceladas que pagam a última parcela e compras à vista daquele mês. O total é quanto deixa de sair a partir do mês seguinte. A primeira linha mostra as saídas recorrentes do mês atual, que continuam. Clique em uma linha para ver os itens.'));
   const tabela=el('table'),tb=el('tbody');
-  tabela.append(el('thead',{},el('tr',{},el('th',{},'Mês da última parcela'),el('th',{},'Compras'),el('th',{class:'amt'},'Total que termina'),el('th',{class:'amt'},'Libera por mês (acumulado)'))));
+  tabela.append(el('thead',{},el('tr',{},el('th',{},'Mês'),el('th',{},'Compras que acabam'),el('th',{class:'amt'},'Total que termina'),el('th',{class:'amt'},'Libera por mês (acumulado)'))));
   // linha fixa: saídas recorrentes (recorrentes + assinaturas) do mês atual, que não terminam
   const recs=new Map();rows.forEach(r=>{if(!r.recorrente||r.tipo==='CRÉDITO'||r.competencia!==hoje)return;
     const k=(r.descricao||'')+'|'+(r.forma_pagamento||'');if(!recs.has(k))recs.set(k,r);});
@@ -738,13 +741,15 @@ function cardFimParcelas(rows){
   let acum=0;
   meses.forEach(mes=>{const lst=porMes.get(mes).sort((a,b)=>b.valor-a.valor);const tot=lst.reduce((x,s)=>x+s.valor,0);acum+=tot;
     const det=el('tr',{class:'hidden',style:'cursor:default;background:var(--surface-2)'},el('td',{colspan:4,style:'padding:6px 12px 12px'},
-      ...lst.map(s=>el('div',{class:'lrow',style:'padding:7px 0'},el('span',{class:'dot',style:`background:${colorFor(s.categoria)}`}),
-        el('span',{style:'flex:1;min-width:0'},el('div',{style:'font-weight:600'},s.descricao),el('div',{class:'muted',style:'font-size:12px'},`${s.forma_pagamento||'—'} · ${s.total}x de ${brl(s.valor)}`)),
-        el('b',{style:'font-variant-numeric:tabular-nums'},brl(s.valor))))));
+      ...[['Parcelas que terminam',lst.filter(s=>!s.avista)],['Compras à vista',lst.filter(s=>s.avista)]].filter(([,g])=>g.length).flatMap(([tit,g])=>[
+        el('div',{class:'muted',style:'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:8px 0 2px'},`${tit} · ${brl(g.reduce((x,s)=>x+s.valor,0))}`),
+        ...g.map(s=>el('div',{class:'lrow',style:'padding:7px 0'},el('span',{class:'dot',style:`background:${colorFor(s.categoria)}`}),
+          el('span',{style:'flex:1;min-width:0'},el('div',{style:'font-weight:600'},s.descricao),el('div',{class:'muted',style:'font-size:12px'},`${s.forma_pagamento||'—'} · `+(s.avista?'à vista':`${s.total}x de ${brl(s.valor)}`))),
+          el('b',{style:'font-variant-numeric:tabular-nums'},brl(s.valor))))])));
     tb.append(el('tr',{title:'Ver compras',onclick:()=>det.classList.toggle('hidden')},
-      el('td',{style:'font-weight:600;white-space:nowrap'},compLabel(mes)),el('td',{class:'muted'},`${lst.length} compra(s)`),
+      el('td',{style:'font-weight:600;white-space:nowrap'},compLabel(mes)),el('td',{class:'muted'},(()=>{const p=lst.filter(s=>!s.avista).length,a=lst.length-p;return[p?`${p} parcelada(s)`:'',a?`${a} à vista`:''].filter(Boolean).join(' · ');})()),
       el('td',{class:'amt',style:'color:var(--red)'},brl(tot)),el('td',{class:'amt',style:'color:var(--green)'},brl(acum))),det);});
-  if(!meses.length)tb.append(el('tr',{style:'cursor:default'},el('td',{colspan:4,class:'muted',style:'text-align:center;padding:18px'},'Nenhuma compra parcelada em aberto.')));
+  if(!meses.length)tb.append(el('tr',{style:'cursor:default'},el('td',{colspan:4,class:'muted',style:'text-align:center;padding:18px'},'Nenhuma compra que acabe a partir deste mês.')));
   tabela.append(tb);c.append(el('div',{class:'tablewrap'},tabela));
   return c;}
 
