@@ -778,7 +778,7 @@ function toggleSort(sort,k){
 // ---------- detalhe linha a linha ----------
 function openDetalhe(titulo,list){
   modal(close=>{
-    const sort={key:'data_pagamento',dir:'asc'};
+    const sort={key:'data_transacao',dir:'asc'};
     const box=el('div');
     let ent=0,sai=0;list.forEach(r=>r.tipo==='CRÉDITO'?ent+=Math.abs(+r.valor):sai+=Math.abs(+r.valor));
     const resumo=[`${list.length} lançamento(s)`];
@@ -789,12 +789,12 @@ function openDetalhe(titulo,list){
     const wrap=el('div',{class:'tablewrap',style:'margin-top:14px'});box.append(wrap);
     const draw=()=>{
       wrap.innerHTML='';const t=el('table');
-      t.append(sortHeader([['data_pagamento','Data'],['descricao','Descrição'],['categoria','Categoria'],['parcela','Parcela'],['valor','Valor','amt']],sort,k=>{toggleSort(sort,k);draw();}));
+      t.append(sortHeader([['data_transacao','Data da compra'],['descricao','Descrição'],['categoria','Categoria'],['parcela','Parcela'],['valor','Valor','amt']],sort,k=>{toggleSort(sort,k);draw();}));
       const tb=el('tbody');
       ordenar(list,sort).forEach(r=>{
-        const d=r.data_pagamento||r.data_transacao;
+        const d=r.data_transacao;
         tb.append(el('tr',{onclick:()=>{close();openLanc(r);}},
-          el('td',{class:'muted',style:'white-space:nowrap'},d?d.split('-').reverse().join('/'):'—'),
+          el('td',{class:'muted',style:'white-space:nowrap'},d?d.split('-').reverse().join('/'):''),
           el('td',{style:'font-weight:600'},r.descricao),
           el('td',{},r.categoria?el('span',{class:'chiptag',style:`background:${colorFor(r.categoria)}1f;color:${colorFor(r.categoria)}`},r.categoria):el('span',{class:'chiptag',style:'background:var(--amber-weak);color:var(--amber)'},'Pendente')),
           el('td',{class:'muted'},r.parcelas_total>1?`${r.parcela_num||'?'}/${r.parcelas_total}`:'—'),
