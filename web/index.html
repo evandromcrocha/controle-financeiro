@@ -701,6 +701,39 @@ function renderResumo(v){
 }
 
 
+// ---------- parcelas que terminam ----------
+// cada compra parcelada (série) termina na competência da última parcela; o valor da parcela deixa de sair a partir do mês seguinte
+function seriesParceladas(rows){
+  const m=new Map();
+  rows.forEach(r=>{if(!(r.parcelas_total>1)||r.tipo==='CRÉDITO'||!r.competencia)return;
+    const k=r.grupo&&r.grupo.startsWith('PARC:')?r.grupo:[normDesc(r.descricao),r.forma_pagamento||'',Math.abs(+r.valor).toFixed(2),r.parcelas_total].join('|');
+    const fim=r.parcela_num?shiftComp(r.competencia,r.parcelas_total-r.parcela_num):r.competencia;
+    const s=m.get(k)||{descricao:r.descricao.replace(/\s*-?\s*parcela\s+\d+\s*(\/|de)\s*\d+/i,'').replace(/\s+\d{1,2}\/\d{1,2}$/,''),forma_pagamento:r.forma_pagamento,categoria:r.categoria,
+      valor:Math.abs(+r.valor),total:r.parcelas_total,fim,ids:[]};
+    if(ordC(fim)>ordC(s.fim))s.fim=fim;s.ids.push(r);m.set(k,s);});
+  return[...m.values()];}
+function cardFimParcelas(rows){
+  const hoje=nowComp(),porMes=new Map();
+  seriesParceladas(rows).filter(s=>ordC(s.fim)>=ordC(hoje)).forEach(s=>{const l=porMes.get(s.fim)||[];l.push(s);porMes.set(s.fim,l);});
+  const meses=[...porMes.keys()].sort((a,b)=>ordC(a)-ordC(b));
+  const c=el('div',{class:'card',style:'margin-top:16px'});
+  c.append(el('h2',{style:'margin:0 0 4px'},'Parcelas que terminam em cada mês'),
+    el('div',{class:'muted',style:'font-size:13px;margin-bottom:12px'},'Mês da última parcela de cada compra parcelada. O total do mês é quanto deixa de sair a partir do mês seguinte. Clique no mês para ver as compras.'));
+  if(!meses.length){c.append(el('div',{class:'muted'},'Nenhuma compra parcelada em aberto.'));return c;}
+  const tabela=el('table'),tb=el('tbody');
+  tabela.append(el('thead',{},el('tr',{},el('th',{},'Mês da última parcela'),el('th',{},'Compras'),el('th',{class:'amt'},'Total que termina'),el('th',{class:'amt'},'Libera por mês (acumulado)'))));
+  let acum=0;
+  meses.forEach(mes=>{const lst=porMes.get(mes).sort((a,b)=>b.valor-a.valor);const tot=lst.reduce((x,s)=>x+s.valor,0);acum+=tot;
+    const det=el('tr',{class:'hidden',style:'cursor:default;background:var(--surface-2)'},el('td',{colspan:4,style:'padding:6px 12px 12px'},
+      ...lst.map(s=>el('div',{class:'lrow',style:'padding:7px 0'},el('span',{class:'dot',style:`background:${colorFor(s.categoria)}`}),
+        el('span',{style:'flex:1;min-width:0'},el('div',{style:'font-weight:600'},s.descricao),el('div',{class:'muted',style:'font-size:12px'},`${s.forma_pagamento||'—'} · ${s.total}x de ${brl(s.valor)}`)),
+        el('b',{style:'font-variant-numeric:tabular-nums'},brl(s.valor))))));
+    tb.append(el('tr',{title:'Ver compras',onclick:()=>det.classList.toggle('hidden')},
+      el('td',{style:'font-weight:600;white-space:nowrap'},compLabel(mes)),el('td',{class:'muted'},`${lst.length} compra(s)`),
+      el('td',{class:'amt',style:'color:var(--red)'},brl(tot)),el('td',{class:'amt',style:'color:var(--green)'},brl(acum))),det);});
+  tabela.append(tb);c.append(el('div',{class:'tablewrap'},tabela));
+  return c;}
+
 // ---------- ordenação de tabelas ----------
 const SORTS={
   data:r=>r.data_transacao||r.data_pagamento||'',
@@ -847,6 +880,8 @@ function renderRel(v){
       el('td',{class:'amt',style:`color:${l.fim>=0?'var(--text)':'var(--red)'}`},brl(l.fim))));});
   bd.append(el('tr',{style:'cursor:default;background:var(--surface-2)'},el('td',{style:'font-weight:600'},'Total '+anoAtual),el('td',{class:'amt',style:'color:var(--green)'},brl(se)),el('td',{class:'amt',style:'color:var(--red)'},brl(ss)),el('td',{class:'amt'},brl(se-ss)),el('td',{})));
   tb.append(bd);tw.append(tb);cm.append(tw);v.append(cm);
+  // ---- parcelas que terminam em cada mês ----
+  v.append(cardFimParcelas(rows));
   // ---- dia da semana ----
   const DOW=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const dw=new Array(7).fill(0), dwn=new Array(7).fill(0);
