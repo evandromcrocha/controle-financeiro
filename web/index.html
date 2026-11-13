@@ -702,12 +702,13 @@ function renderResumo(v){
 
 
 // ---------- parcelas que terminam ----------
-// cada compra parcelada (série) termina na competência da última parcela; o valor da parcela deixa de sair a partir do mês seguinte
+// cada compra parcelada (série) termina na competência da última parcela lançada (parcelas apagadas não contam);
+// o valor da parcela deixa de sair a partir do mês seguinte
 function seriesParceladas(rows){
   const m=new Map();
   rows.forEach(r=>{if(!(r.parcelas_total>1)||r.tipo==='CRÉDITO'||!r.competencia)return;
     const k=r.grupo&&r.grupo.startsWith('PARC:')?r.grupo:[normDesc(r.descricao),r.forma_pagamento||'',Math.abs(+r.valor).toFixed(2),r.parcelas_total].join('|');
-    const fim=r.parcela_num?shiftComp(r.competencia,r.parcelas_total-r.parcela_num):r.competencia;
+    const fim=r.competencia;
     const s=m.get(k)||{descricao:r.descricao.replace(/\s*-?\s*parcela\s+\d+\s*(\/|de)\s*\d+/i,'').replace(/\s+\d{1,2}\/\d{1,2}$/,''),forma_pagamento:r.forma_pagamento,categoria:r.categoria,
       valor:Math.abs(+r.valor),total:r.parcelas_total,fim,ids:[]};
     if(ordC(fim)>ordC(s.fim))s.fim=fim;s.ids.push(r);m.set(k,s);});
