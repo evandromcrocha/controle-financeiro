@@ -1140,11 +1140,13 @@ function escolherEscopo(titulo,r,excluir){return new Promise(res=>{let feito=fal
   new MutationObserver((m,o)=>{if(!document.body.contains(bg)){o.disconnect();fim(null);}}).observe(document.body,{childList:true});});}
 async function aplicarNaRecorrencia(r,p){
   const campos={descricao:p.descricao,valor:p.valor,valor_final:p.valor_final,tipo:p.tipo,categoria:p.categoria,forma_pagamento:p.forma_pagamento,assinatura:p.assinatura};
-  const base=()=>filtroRecorrencia(supabase.from('lancamentos'),r).neq('id',r.id).gte('competencia_ref',inicioFuturo(r));
-  if(!p.recorrente){const{error}=await base().eq('projetado',true).delete();if(error)return error;
-    const e2=(await base().update({recorrente:false,assinatura:false})).error;return e2;}
-  let{error}=await base().eq('projetado',false).update(campos);if(error)return error;
-  ({error}=await base().eq('projetado',true).update({...campos,grupo:'REC:'+p.descricao+'|'+(p.forma_pagamento||'')}));return error;}
+  // no supabase-js os filtros vêm depois da operação (update/delete)
+  const base=q=>filtroRecorrencia(q,r).neq('id',r.id).gte('competencia_ref',inicioFuturo(r));
+  const T=()=>supabase.from('lancamentos');
+  if(!p.recorrente){const{error}=await base(T().delete()).eq('projetado',true);if(error)return error;
+    return (await base(T().update({recorrente:false,assinatura:false}))).error;}
+  let{error}=await base(T().update(campos)).eq('projetado',false);if(error)return error;
+  ({error}=await base(T().update({...campos,grupo:'REC:'+p.descricao+'|'+(p.forma_pagamento||'')})).eq('projetado',true));return error;}
 // gera projeções do novo recorrente até o mesmo horizonte das existentes
 // horizonte = mês mais distante entre: projeções existentes, último "Gerar projeções" usado e 12 meses à frente
 async function projetarAteHorizonte(){const cands=state.rows.filter(x=>x.projetado&&x.competencia).map(x=>x.competencia);
@@ -1315,6 +1317,9 @@ function revisarImportacao(itens,cartao,comp){
       if(s.some(x=>x.assinatura)){await projetarAteHorizonte();await loadAll();}}
     draw();return box;},'wide');
 }
+
+// erros inesperados viram aviso na tela em vez de falhar em silêncio
+window.addEventListener('unhandledrejection',e=>toast('Erro: '+(e.reason?.message||e.reason||'falha inesperada')));
 
 // ---------- chat com a IA ----------
 const MD=t=>{const esc=x=>x.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
