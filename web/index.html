@@ -719,10 +719,22 @@ function cardFimParcelas(rows){
   const meses=[...porMes.keys()].sort((a,b)=>ordC(a)-ordC(b));
   const c=el('div',{class:'card',style:'margin-top:16px'});
   c.append(el('h2',{style:'margin:0 0 4px'},'Parcelas que terminam em cada mês'),
-    el('div',{class:'muted',style:'font-size:13px;margin-bottom:12px'},'Mês da última parcela de cada compra parcelada. O total do mês é quanto deixa de sair a partir do mês seguinte. Clique no mês para ver as compras.'));
-  if(!meses.length){c.append(el('div',{class:'muted'},'Nenhuma compra parcelada em aberto.'));return c;}
+    el('div',{class:'muted',style:'font-size:13px;margin-bottom:12px'},'Mês da última parcela de cada compra parcelada. O total do mês é quanto deixa de sair a partir do mês seguinte. A primeira linha mostra as saídas recorrentes do mês atual, que continuam. Clique em uma linha para ver os itens.'));
   const tabela=el('table'),tb=el('tbody');
   tabela.append(el('thead',{},el('tr',{},el('th',{},'Mês da última parcela'),el('th',{},'Compras'),el('th',{class:'amt'},'Total que termina'),el('th',{class:'amt'},'Libera por mês (acumulado)'))));
+  // linha fixa: saídas recorrentes (recorrentes + assinaturas) do mês atual, que não terminam
+  const recs=new Map();rows.forEach(r=>{if(!r.recorrente||r.tipo==='CRÉDITO'||r.competencia!==hoje)return;
+    const k=(r.descricao||'')+'|'+(r.forma_pagamento||'');if(!recs.has(k))recs.set(k,r);});
+  const lr=[...recs.values()].sort((a,b)=>Math.abs(b.valor)-Math.abs(a.valor));const totRec=lr.reduce((x,r)=>x+Math.abs(+r.valor),0);
+  if(lr.length){const det=el('tr',{class:'hidden',style:'cursor:default;background:var(--surface-2)'},el('td',{colspan:4,style:'padding:6px 12px 12px'},
+      ...lr.map(r=>el('div',{class:'lrow',style:'padding:7px 0'},el('span',{class:'dot',style:`background:${colorFor(r.categoria)}`}),
+        el('span',{style:'flex:1;min-width:0'},el('div',{style:'font-weight:600'},r.descricao),
+          el('div',{style:'display:flex;gap:6px;align-items:center'},r.assinatura?el('span',{class:'chiptag tag-ass',style:'margin:0'},'▶ Assinatura'):el('span',{class:'chiptag tag-rec',style:'margin:0'},'🔁 Recorrente'),
+            el('span',{class:'muted',style:'font-size:12px'},r.forma_pagamento||'—'))),
+        el('b',{style:'font-variant-numeric:tabular-nums'},brl(Math.abs(+r.valor)))))));
+    tb.append(el('tr',{title:'Ver recorrentes',style:'background:var(--primary-weak)',onclick:()=>det.classList.toggle('hidden')},
+      el('td',{style:'font-weight:600'},'🔁 Recorrentes e assinaturas'),el('td',{class:'muted'},`${lr.length} item(ns) · todo mês`),
+      el('td',{class:'amt',style:'color:var(--primary)'},brl(totRec)),el('td',{class:'amt muted'},'não terminam')),det);}
   let acum=0;
   meses.forEach(mes=>{const lst=porMes.get(mes).sort((a,b)=>b.valor-a.valor);const tot=lst.reduce((x,s)=>x+s.valor,0);acum+=tot;
     const det=el('tr',{class:'hidden',style:'cursor:default;background:var(--surface-2)'},el('td',{colspan:4,style:'padding:6px 12px 12px'},
@@ -732,6 +744,7 @@ function cardFimParcelas(rows){
     tb.append(el('tr',{title:'Ver compras',onclick:()=>det.classList.toggle('hidden')},
       el('td',{style:'font-weight:600;white-space:nowrap'},compLabel(mes)),el('td',{class:'muted'},`${lst.length} compra(s)`),
       el('td',{class:'amt',style:'color:var(--red)'},brl(tot)),el('td',{class:'amt',style:'color:var(--green)'},brl(acum))),det);});
+  if(!meses.length)tb.append(el('tr',{style:'cursor:default'},el('td',{colspan:4,class:'muted',style:'text-align:center;padding:18px'},'Nenhuma compra parcelada em aberto.')));
   tabela.append(tb);c.append(el('div',{class:'tablewrap'},tabela));
   return c;}
 
@@ -1145,8 +1158,17 @@ async function aplicarNaRecorrencia(r,p){
   const T=()=>supabase.from('lancamentos');
   if(!p.recorrente){const{error}=await base(T().delete()).eq('projetado',true);if(error)return error;
     return (await base(T().update({recorrente:false,assinatura:false}))).error;}
-  let{error}=await base(T().update(campos)).eq('projetado',false);if(error)return error;
-  ({error}=await base(T().update({...campos,grupo:'REC:'+p.descricao+'|'+(p.forma_pagamento||'')})).eq('projetado',true));return error;}
+  // datas acompanham: mesmo dia da data informada, no mês de cada lançamento seguinte
+  const desloca=(d,k)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(d||''))return null;const[y,m,dd]=d.split('-').map(Number);
+    const n=new Date(y,m-1+k,1),dim=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
+    return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(Math.min(dd,dim)).padStart(2,'0')}`;};
+  const seguintes=state.rows.filter(x=>x.recorrente&&x.id!==r.id&&x.descricao===r.descricao&&(x.forma_pagamento||null)===(r.forma_pagamento||null)
+    &&(x.competencia_ref||'')>=inicioFuturo(r));
+  const res=await Promise.all(seguintes.map(x=>{const k=ordC(x.competencia)-ordC(p.competencia);
+    const upd={...campos,...(x.projetado?{grupo:'REC:'+p.descricao+'|'+(p.forma_pagamento||'')}:{})};
+    const dt=desloca(p.data_transacao,k),dp=desloca(p.data_pagamento,k);if(dt)upd.data_transacao=dt;if(dp)upd.data_pagamento=dp;
+    return T().update(upd).eq('id',x.id);}));
+  return res.find(x=>x.error)?.error||null;}
 // gera projeções do novo recorrente até o mesmo horizonte das existentes
 // horizonte = mês mais distante entre: projeções existentes, último "Gerar projeções" usado e 12 meses à frente
 async function projetarAteHorizonte(){const cands=state.rows.filter(x=>x.projetado&&x.competencia).map(x=>x.competencia);
