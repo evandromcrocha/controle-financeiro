@@ -388,6 +388,22 @@
   @media(max-width:920px){#view .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}#view .seg::-webkit-scrollbar{display:none}#view .seg button{flex:none;white-space:nowrap}}
   @media(max-width:920px){.row{gap:10px}.row>.stat{min-width:0;flex:1 1 calc(50% - 5px)}.stat .val{font-size:18px;overflow-wrap:anywhere}#projAte{width:120px!important}}
   .chiptag.tag-ass.off{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--border-strong)}
+  /* usuário conectado */
+  .userbox{display:flex;align-items:center;gap:10px;margin:auto 0 10px;padding:10px;border-radius:14px;background:var(--glass-2);border:1px solid var(--glass-bd);min-width:0}
+  .userbox+.foot{margin-top:0}
+  .userbox .uemail{white-space:normal;overflow-wrap:anywhere;font-size:12.5px}
+  .uav{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;background:linear-gradient(135deg,#c08457,#8a5a3b)}
+  .uinfo{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+  .uemail{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .titlerow{display:flex;align-items:center;gap:12px;min-width:0}
+  .userchip{display:none}
+  @media(max-width:920px){
+    .userbox{display:none}
+    .titlerow{justify-content:space-between}
+    .userchip{display:flex;align-items:center;gap:6px;min-width:0;max-width:60%;padding:4px 10px 4px 4px;border-radius:999px;background:var(--glass-2);border:1px solid var(--glass-bd)}
+    .userchip .uav{width:26px;height:26px;font-size:12px}
+    .userchip .uemail{font-size:12px}
+  }
 </style>
 </head>
 <body>
@@ -410,6 +426,7 @@
   <aside class="side">
     <div class="brand"><span class="m"><svg class="ico" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span> Financeiro</div>
     <nav class="nav" id="nav"></nav>
+    <div class="userbox" id="userBox" title="Usuário conectado"></div>
     <div class="foot">
       <button class="iconbtn" id="btnTheme" title="Tema" aria-label="Alternar tema"></button>
       <button class="btn ghost" style="flex:1" id="btnLogout"><svg class="ico sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> Sair</button>
@@ -417,7 +434,7 @@
   </aside>
   <main class="main">
     <div class="topbar">
-      <h1 id="title">Resumo</h1>
+      <div class="titlerow"><h1 id="title">Resumo</h1><span class="userchip" id="userChip" title="Usuário conectado"></span></div>
       <div class="toolbar">
         <div class="ymsel" id="compWrap">
           <button class="iconbtn" id="compPrev" title="Mês anterior" aria-label="Mês anterior">‹</button>
@@ -1016,6 +1033,7 @@ function renderAjustes(v){
   if(!state.orc?.length)mBox.append(el('div',{class:'muted'},'Nenhuma meta ainda.'));
   v.append(mBox);
   v.append(el('h2',{},'Segurança'));
+  if(state.email)v.append(el('div',{class:'muted',style:'font-size:13px;margin:-4px 0 10px'},'Conectado como ',el('b',{style:'color:var(--text)'},state.email)));
   v.append(el('div',{class:'card'},el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>openSenha()},el('span',{class:'avatar',style:'background:var(--primary-weak);color:var(--primary)'},icon('gear','ico sm')),
     el('span',{style:'flex:1'},el('div',{style:'font-weight:600'},'Alterar senha'),el('div',{class:'muted',style:'font-size:12px'},'Mínimo 8 caracteres, com letras, números e símbolos'))),
     el('div',{class:'lrow',style:'cursor:pointer',onclick:()=>{applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}},el('span',{class:'avatar',style:'background:var(--primary-weak);color:var(--primary)'},icon('moon','ico sm')),el('span',{style:'flex:1;font-weight:600'},'Alternar tema claro/escuro')),
@@ -1401,9 +1419,14 @@ function abrirChat(){
 $('#btnLogin').onclick=async()=>{$('#loginErr').textContent='';const{error}=await supabase.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#pass').value});if(error)$('#loginErr').textContent=error.message;};
 $('#pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('#btnLogin').click();});
 $('#btnLogout').onclick=()=>supabase.auth.signOut();
+// mostra quem está conectado (menu lateral, topo no celular e Ajustes)
+function mostrarUsuario(session){const email=session?.user?.email||'';state.email=email;
+  const ini=(email[0]||'?').toUpperCase(),av=()=>el('span',{class:'uav'},ini);
+  const b=$('#userBox');b.innerHTML='';if(email)b.append(av(),el('span',{class:'uinfo'},el('span',{class:'muted',style:'font-size:11px'},'Conectado como'),el('span',{class:'uemail'},email)));
+  const c=$('#userChip');c.innerHTML='';if(email)c.append(av(),el('span',{class:'uemail'},email));}
 function botaoChat(){if($('#chatFab'))return;document.body.append(el('button',{id:'chatFab',class:'chatfab',title:'Perguntar à IA',onclick:abrirChat},icon('sparkle'),el('span',{},'Perguntar')));}
-supabase.auth.onAuthStateChange((_e,session)=>{if(session){botaoChat();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}else{$('#app').classList.add('hidden');$('#login').classList.remove('hidden');$('#chatFab')?.remove();$('#chatPanel')?.remove();state.chat=[];}});
-supabase.auth.getSession().then(({data})=>{if(data.session){botaoChat();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}});
+supabase.auth.onAuthStateChange((_e,session)=>{if(session){mostrarUsuario(session);botaoChat();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}else{$('#app').classList.add('hidden');$('#login').classList.remove('hidden');$('#chatFab')?.remove();$('#chatPanel')?.remove();state.chat=[];}});
+supabase.auth.getSession().then(({data})=>{if(data.session){mostrarUsuario(data.session);botaoChat();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();loadAll();}});
 </script>
 <script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
 <script>
