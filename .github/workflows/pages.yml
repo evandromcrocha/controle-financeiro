@@ -19,7 +19,10 @@ jobs:
       - name: Marca a versão publicada
         run: |
           echo "$GITHUB_SHA" > web/version.txt
-          sed -i "s/__BUILD__/$GITHUB_SHA/" web/index.html
+          # todo import local leva ?v=__BUILD__, para o navegador não misturar módulos de versões diferentes
+          sem=$(grep -rnE "(import .* from|href=|src=) *['\"]\.{0,2}/?[a-z]+[^'\"]*\.(js|css)['\"]" web --include=*.js --include=*.html | grep -v '__BUILD__' || true)
+          if [ -n "$sem" ]; then echo "Arquivos locais sem ?v=__BUILD__:"; echo "$sem"; exit 1; fi
+          grep -rl "__BUILD__" web | xargs sed -i "s/__BUILD__/$GITHUB_SHA/g"
       - uses: actions/upload-pages-artifact@v3
         with: { path: web }
       - id: d
